@@ -1,0 +1,5 @@
+.env
+.env
+agents/__pycache__
+utils/__pycache__
+firebase_credentials.json
