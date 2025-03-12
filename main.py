@@ -14,6 +14,9 @@ from agents.table_generator import get_df
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_community.chat_models import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
+from fastapi import UploadFile, File, HTTPException, Depends
+from io import BytesIO
+import pandas as pd
 
 # Initialize a global LLM instance using the key from .env
 llm = ChatOpenAI(temperature=0, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
@@ -33,6 +36,25 @@ app.add_middleware(
 def health_check():
     return {"status": "ok"}
 
+
+def load_data(file_bytes: BytesIO):
+    """
+    Load a DataFrame from a BytesIO object based on file extension.
+    """
+    filename = file_bytes.name.lower()
+    try:
+        if filename.endswith('.csv'):
+            # Using engine='python' and sep=None to auto-detect the separator if needed
+            return pd.read_csv(file_bytes, sep=None, engine='python')
+        elif filename.endswith(('.xls', '.xlsx')):
+            return pd.read_excel(file_bytes)
+        elif filename.endswith('.json'):
+            return pd.read_json(file_bytes)
+        else:
+            raise ValueError("Unsupported file format.")
+    except Exception as e:
+        raise ValueError(f"Error loading file: {e}")
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase_token)):
     """
@@ -40,17 +62,24 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase
     """
     try:
         contents = await file.read()
-        from io import BytesIO
         file_bytes = BytesIO(contents)
-        file_bytes.name = file.filename  # ensure the file-like object has a name attribute
+        file_bytes.name = file.filename  # assign name attribute for file type detection
+
         df = load_data(file_bytes)
-        if df is None:
-            raise HTTPException(status_code=400, detail="Failed to process file.")
+        print(df.head())
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Failed to process file: DataFrame is empty.")
+        
         # Save dataframe in the user’s session (using the Firebase UID as key)
         user_id = user["uid"]
         session = session_manager.get_session(user_id)
         session["df"] = df
-        return {"message": "File uploaded successfully.", "columns": list(df.columns), "rows": len(df)}
+
+        return {
+            "message": "File uploaded successfully.",
+            "columns": list(df.columns),
+            "rows": len(df)
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
