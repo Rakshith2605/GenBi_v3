@@ -1,0 +1,775 @@
+2025-03-12 14:16:46 [INFO] Question: Give me a table where branch is B and Gender is Male and Rating below 5
+2025-03-12 14:16:46 [INFO] Running PandasAI with langchain_openai-chat LLM...
+2025-03-12 14:16:46 [INFO] Prompt ID: 21ea5966-0cda-403b-8aa4-5588982d15c8
+2025-03-12 14:16:46 [INFO] Executing Pipeline: GenerateChatPipeline
+2025-03-12 14:16:46 [INFO] Executing Step 0: ValidatePipelineInput
+2025-03-12 14:16:46 [INFO] Executing Step 1: CacheLookup
+2025-03-12 14:16:46 [INFO] Executing Step 2: PromptGeneration
+2025-03-12 14:16:46 [INFO] Using prompt: dfs[0]:
+  name: null
+  description: null
+  type: pd.DataFrame
+  rows: 1000
+  columns: 17
+  schema:
+    fields:
+    - name: Invoice ID
+      type: object
+      samples:
+      - 211-05-0490
+      - 645-44-1170
+      - 188-55-0967
+    - name: Branch
+      type: object
+      samples:
+      - A
+      - C
+      - B
+    - name: City
+      type: object
+      samples:
+      - Mandalay
+      - Yangon
+      - Naypyitaw
+    - name: Customer type
+      type: object
+      samples:
+      - Member
+      - Normal
+      - Normal
+    - name: Gender
+      type: object
+      samples:
+      - Female
+      - Female
+      - Male
+    - name: Product line
+      type: object
+      samples:
+      - Home and lifestyle
+      - Food and beverages
+      - Electronic accessories
+    - name: Unit price
+      type: float64
+      samples:
+      - 63.61
+      - 51.69
+      - 82.7
+    - name: Quantity
+      type: int64
+      samples:
+      - 3
+      - 10
+      - 8
+    - name: Tax 5%
+      type: float64
+      samples:
+      - 31.2165
+      - 20.15
+      - 2.7225
+    - name: Total
+      type: float64
+      samples:
+      - 207.48
+      - 91.056
+      - 131.922
+    - name: Date
+      type: object
+      samples:
+      - 2/6/2019
+      - 1/20/2019
+      - 3/7/2019
+    - name: Time
+      type: object
+      samples:
+      - '11:26'
+      - '16:40'
+      - '12:10'
+    - name: Payment
+      type: object
+      samples:
+      - Cash
+      - Ewallet
+      - Credit card
+    - name: cogs
+      type: float64
+      samples:
+      - 815.67
+      - 40.35
+      - 236.07
+    - name: gross margin percentage
+      type: float64
+      samples:
+      - 4.761904762
+      - 4.761904762
+      - 4.761904762
+    - name: gross income
+      type: float64
+      samples:
+      - 19.13
+      - 10.326
+      - 44.9
+    - name: Rating
+      type: float64
+      samples:
+      - 9.2
+      - 7.0
+      - 4.6
+
+
+
+
+Update this initial code:
+```python
+# TODO: import the required dependencies
+import pandas as pd
+
+# Write code here
+
+# Declare result var: 
+type (possible values "string", "number", "dataframe", "plot"). Examples: { "type": "string", "value": f"The highest salary is {highest_salary}." } or { "type": "number", "value": 125 } or { "type": "dataframe", "value": pd.DataFrame({...}) } or { "type": "plot", "value": "temp_chart.png" }
+
+```
+
+
+
+### QUERY
+ Give me a table where branch is B and Gender is Male and Rating below 5
+
+Variable `dfs: list[pd.DataFrame]` is already declared.
+
+At the end, declare "result" variable as a dictionary of type and value.
+
+If you are asked to plot a chart, use "matplotlib" for charts, save as png.
+
+
+Generate python code and return full updated code:
+2025-03-12 14:16:46 [INFO] Executing Step 3: CodeGenerator
+2025-03-12 14:16:52 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:16:52 [INFO] Prompt used:
+            
+dfs[0]:
+  name: null
+  description: null
+  type: pd.DataFrame
+  rows: 1000
+  columns: 17
+  schema:
+    fields:
+    - name: Invoice ID
+      type: object
+      samples:
+      - 211-05-0490
+      - 645-44-1170
+      - 188-55-0967
+    - name: Branch
+      type: object
+      samples:
+      - A
+      - C
+      - B
+    - name: City
+      type: object
+      samples:
+      - Mandalay
+      - Yangon
+      - Naypyitaw
+    - name: Customer type
+      type: object
+      samples:
+      - Member
+      - Normal
+      - Normal
+    - name: Gender
+      type: object
+      samples:
+      - Female
+      - Female
+      - Male
+    - name: Product line
+      type: object
+      samples:
+      - Home and lifestyle
+      - Food and beverages
+      - Electronic accessories
+    - name: Unit price
+      type: float64
+      samples:
+      - 63.61
+      - 51.69
+      - 82.7
+    - name: Quantity
+      type: int64
+      samples:
+      - 3
+      - 10
+      - 8
+    - name: Tax 5%
+      type: float64
+      samples:
+      - 31.2165
+      - 20.15
+      - 2.7225
+    - name: Total
+      type: float64
+      samples:
+      - 207.48
+      - 91.056
+      - 131.922
+    - name: Date
+      type: object
+      samples:
+      - 2/6/2019
+      - 1/20/2019
+      - 3/7/2019
+    - name: Time
+      type: object
+      samples:
+      - '11:26'
+      - '16:40'
+      - '12:10'
+    - name: Payment
+      type: object
+      samples:
+      - Cash
+      - Ewallet
+      - Credit card
+    - name: cogs
+      type: float64
+      samples:
+      - 815.67
+      - 40.35
+      - 236.07
+    - name: gross margin percentage
+      type: float64
+      samples:
+      - 4.761904762
+      - 4.761904762
+      - 4.761904762
+    - name: gross income
+      type: float64
+      samples:
+      - 19.13
+      - 10.326
+      - 44.9
+    - name: Rating
+      type: float64
+      samples:
+      - 9.2
+      - 7.0
+      - 4.6
+
+
+
+
+Update this initial code:
+```python
+# TODO: import the required dependencies
+import pandas as pd
+
+# Write code here
+
+# Declare result var: 
+type (possible values "string", "number", "dataframe", "plot"). Examples: { "type": "string", "value": f"The highest salary is {highest_salary}." } or { "type": "number", "value": 125 } or { "type": "dataframe", "value": pd.DataFrame({...}) } or { "type": "plot", "value": "temp_chart.png" }
+
+```
+
+
+
+### QUERY
+ Give me a table where branch is B and Gender is Male and Rating below 5
+
+Variable `dfs: list[pd.DataFrame]` is already declared.
+
+At the end, declare "result" variable as a dictionary of type and value.
+
+If you are asked to plot a chart, use "matplotlib" for charts, save as png.
+
+
+Generate python code and return full updated code:
+            
+2025-03-12 14:16:52 [INFO] Code generated:
+            ```
+            # TODO: import the required dependencies
+import pandas as pd
+
+# Write code here
+df = dfs[0]
+filtered_df = df[(df['Branch'] == 'B') & (df['Gender'] == 'Male') & (df['Rating'] < 5)]
+
+# Declare result var: 
+result = { "type": "dataframe", "value": filtered_df }
+            ```
+            
+2025-03-12 14:16:52 [INFO] Executing Step 4: CachePopulation
+2025-03-12 14:16:52 [INFO] Executing Step 5: CodeCleaning
+2025-03-12 14:16:52 [INFO] 
+Code running:
+```
+df = dfs[0]
+filtered_df = df[(df['Branch'] == 'B') & (df['Gender'] == 'Male') & (df['Rating'] < 5)]
+result = {'type': 'dataframe', 'value': filtered_df}
+        ```
+2025-03-12 14:16:52 [INFO] Executing Step 6: CodeExecution
+2025-03-12 14:16:52 [INFO] Executing Step 7: ResultValidation
+2025-03-12 14:16:52 [INFO] Answer: {'type': 'dataframe', 'value':       Invoice ID Branch      City Customer type Gender            Product line  Unit price  Quantity   Tax 5%     Total       Date   Time      Payment    cogs  gross margin percentage  gross income  Rating
+22   273-16-6619      B  Mandalay        Normal   Male      Home and lifestyle       33.20         2   3.3200   69.7200  3/15/2019  12:20  Credit card   66.40                 4.761905        3.3200     4.4
+30   871-79-8483      B  Mandalay        Normal   Male     Fashion accessories       94.13         5  23.5325  494.1825  2/25/2019  19:39  Credit card  470.65                 4.761905       23.5325     4.8
+31   149-71-6266      B  Mandalay        Member   Male       Sports and travel       78.07         9  35.1315  737.7615  1/28/2019  12:43         Cash  702.63                 4.761905       35.1315     4.5
+119  378-24-2715      B  Mandalay        Normal   Male      Home and lifestyle       53.44         2   5.3440  112.2240  1/20/2019  20:38      Ewallet  106.88                 4.761905        5.3440     4.1
+122  219-22-9386      B  Mandalay        Member   Male       Sports and travel       99.96         9  44.9820  944.6220   3/9/2019  17:26  Credit card  899.64                 4.761905       44.9820     4.2
+212  142-63-6033      B  Mandalay        Normal   Male      Home and lifestyle       92.36         5  23.0900  484.8900  3/20/2019  19:17      Ewallet  461.80                 4.761905       23.0900     4.9
+213  656-16-1063      B  Mandalay        Normal   Male       Sports and travel       46.42         3   6.9630  146.2230   1/4/2019  13:24  Credit card  139.26                 4.761905        6.9630     4.4
+226  836-82-5858      B  Mandalay        Member   Male       Health and beauty       69.37         9  31.2165  655.5465  1/26/2019  19:14      Ewallet  624.33                 4.761905       31.2165     4.0
+249  785-13-7708      B  Mandalay        Normal   Male      Food and beverages       73.06         7  25.5710  536.9910  1/14/2019  19:06  Credit card  511.42                 4.761905       25.5710     4.2
+301  573-10-3877      B  Mandalay        Member   Male       Health and beauty       39.01         1   1.9505   40.9605  3/12/2019  16:46  Credit card   39.01                 4.761905        1.9505     4.7
+328  730-61-8757      B  Mandalay        Member   Male       Health and beauty       51.13         4  10.2260  214.7460  1/25/2019  10:11  Credit card  204.52                 4.761905       10.2260     4.0
+353  565-67-6697      B  Mandalay        Member   Male      Home and lifestyle       27.00         9  12.1500  255.1500   3/2/2019  14:16         Cash  243.00                 4.761905       12.1500     4.8
+467  554-53-3790      B  Mandalay        Normal   Male       Sports and travel       37.02         6  11.1060  233.2260  3/22/2019  18:33         Cash  222.12                 4.761905       11.1060     4.5
+473  731-59-7531      B  Mandalay        Member   Male       Health and beauty       72.57         8  29.0280  609.5880  3/30/2019  17:58         Cash  580.56                 4.761905       29.0280     4.6
+545  701-23-5550      B  Mandalay        Member   Male      Home and lifestyle       38.81         4   7.7620  163.0020  3/19/2019  13:40      Ewallet  155.24                 4.761905        7.7620     4.9
+633  420-04-7590      B  Mandalay        Normal   Male      Home and lifestyle       99.70         3  14.9550  314.0550  3/18/2019  11:29      Ewallet  299.10                 4.761905       14.9550     4.7
+675  242-11-3142      B  Mandalay        Member   Male     Fashion accessories       83.77         2   8.3770  175.9170  2/24/2019  19:57         Cash  167.54                 4.761905        8.3770     4.6
+697  826-58-8051      B  Mandalay        Normal   Male      Home and lifestyle       62.19         4  12.4380  261.1980   1/6/2019  19:46      Ewallet  248.76                 4.761905       12.4380     4.3
+701  176-64-7711      B  Mandalay        Normal   Male      Food and beverages       32.32         3   4.8480  101.8080  3/27/2019  19:11  Credit card   96.96                 4.761905        4.8480     4.3
+761  525-09-8450      B  Mandalay        Normal   Male  Electronic accessories       72.13        10  36.0650  757.3650  1/31/2019  15:12  Credit card  721.30                 4.761905       36.0650     4.2
+795  605-83-1050      B  Mandalay        Normal   Male     Fashion accessories       27.18         2   2.7180   57.0780  3/15/2019  16:26      Ewallet   54.36                 4.761905        2.7180     4.3
+895  699-88-1972      B  Mandalay        Normal   Male       Health and beauty       99.16         8  39.6640  832.9440  1/28/2019  17:47  Credit card  793.28                 4.761905       39.6640     4.2
+947  676-10-2200      B  Mandalay        Member   Male     Fashion accessories       53.78         1   2.6890   56.4690   2/3/2019  20:13      Ewallet   53.78                 4.761905        2.6890     4.7
+977  518-71-6847      B  Mandalay        Member   Male      Food and beverages       26.60         6   7.9800  167.5800  2/26/2019  15:10      Ewallet  159.60                 4.761905        7.9800     4.9}
+2025-03-12 14:16:52 [INFO] Executing Step 8: ResultParsing
+2025-03-12 14:23:02 [INFO] Question: Give me a table where branch is B and Gender is Male and Rating below 5
+2025-03-12 14:23:02 [INFO] Running PandasAI with langchain_openai-chat LLM...
+2025-03-12 14:23:02 [INFO] Prompt ID: c4a9e04e-2c58-46cc-bb45-b72b863e623e
+2025-03-12 14:23:02 [INFO] Executing Pipeline: GenerateChatPipeline
+2025-03-12 14:23:02 [INFO] Executing Step 0: ValidatePipelineInput
+2025-03-12 14:23:02 [INFO] Executing Step 1: CacheLookup
+2025-03-12 14:23:02 [INFO] Using cached response
+2025-03-12 14:23:02 [INFO] Executing Step 2: PromptGeneration
+2025-03-12 14:23:02 [INFO] Executing Step 2: Skipping...
+2025-03-12 14:23:02 [INFO] Executing Step 3: CodeGenerator
+2025-03-12 14:23:02 [INFO] Executing Step 3: Skipping...
+2025-03-12 14:23:02 [INFO] Executing Step 4: CachePopulation
+2025-03-12 14:23:02 [INFO] Executing Step 4: Skipping...
+2025-03-12 14:23:02 [INFO] Executing Step 5: CodeCleaning
+2025-03-12 14:23:02 [INFO] 
+Code running:
+```
+df = dfs[0]
+filtered_df = df[(df['Branch'] == 'B') & (df['Gender'] == 'Male') & (df['Rating'] < 5)]
+result = {'type': 'dataframe', 'value': filtered_df}
+        ```
+2025-03-12 14:23:02 [INFO] Executing Step 6: CodeExecution
+2025-03-12 14:23:02 [INFO] Executing Step 7: ResultValidation
+2025-03-12 14:23:03 [INFO] Answer: {'type': 'dataframe', 'value':       Invoice ID Branch      City Customer type Gender            Product line  Unit price  Quantity   Tax 5%     Total       Date   Time      Payment    cogs  gross margin percentage  gross income  Rating
+22   273-16-6619      B  Mandalay        Normal   Male      Home and lifestyle       33.20         2   3.3200   69.7200  3/15/2019  12:20  Credit card   66.40                 4.761905        3.3200     4.4
+30   871-79-8483      B  Mandalay        Normal   Male     Fashion accessories       94.13         5  23.5325  494.1825  2/25/2019  19:39  Credit card  470.65                 4.761905       23.5325     4.8
+31   149-71-6266      B  Mandalay        Member   Male       Sports and travel       78.07         9  35.1315  737.7615  1/28/2019  12:43         Cash  702.63                 4.761905       35.1315     4.5
+119  378-24-2715      B  Mandalay        Normal   Male      Home and lifestyle       53.44         2   5.3440  112.2240  1/20/2019  20:38      Ewallet  106.88                 4.761905        5.3440     4.1
+122  219-22-9386      B  Mandalay        Member   Male       Sports and travel       99.96         9  44.9820  944.6220   3/9/2019  17:26  Credit card  899.64                 4.761905       44.9820     4.2
+212  142-63-6033      B  Mandalay        Normal   Male      Home and lifestyle       92.36         5  23.0900  484.8900  3/20/2019  19:17      Ewallet  461.80                 4.761905       23.0900     4.9
+213  656-16-1063      B  Mandalay        Normal   Male       Sports and travel       46.42         3   6.9630  146.2230   1/4/2019  13:24  Credit card  139.26                 4.761905        6.9630     4.4
+226  836-82-5858      B  Mandalay        Member   Male       Health and beauty       69.37         9  31.2165  655.5465  1/26/2019  19:14      Ewallet  624.33                 4.761905       31.2165     4.0
+249  785-13-7708      B  Mandalay        Normal   Male      Food and beverages       73.06         7  25.5710  536.9910  1/14/2019  19:06  Credit card  511.42                 4.761905       25.5710     4.2
+301  573-10-3877      B  Mandalay        Member   Male       Health and beauty       39.01         1   1.9505   40.9605  3/12/2019  16:46  Credit card   39.01                 4.761905        1.9505     4.7
+328  730-61-8757      B  Mandalay        Member   Male       Health and beauty       51.13         4  10.2260  214.7460  1/25/2019  10:11  Credit card  204.52                 4.761905       10.2260     4.0
+353  565-67-6697      B  Mandalay        Member   Male      Home and lifestyle       27.00         9  12.1500  255.1500   3/2/2019  14:16         Cash  243.00                 4.761905       12.1500     4.8
+467  554-53-3790      B  Mandalay        Normal   Male       Sports and travel       37.02         6  11.1060  233.2260  3/22/2019  18:33         Cash  222.12                 4.761905       11.1060     4.5
+473  731-59-7531      B  Mandalay        Member   Male       Health and beauty       72.57         8  29.0280  609.5880  3/30/2019  17:58         Cash  580.56                 4.761905       29.0280     4.6
+545  701-23-5550      B  Mandalay        Member   Male      Home and lifestyle       38.81         4   7.7620  163.0020  3/19/2019  13:40      Ewallet  155.24                 4.761905        7.7620     4.9
+633  420-04-7590      B  Mandalay        Normal   Male      Home and lifestyle       99.70         3  14.9550  314.0550  3/18/2019  11:29      Ewallet  299.10                 4.761905       14.9550     4.7
+675  242-11-3142      B  Mandalay        Member   Male     Fashion accessories       83.77         2   8.3770  175.9170  2/24/2019  19:57         Cash  167.54                 4.761905        8.3770     4.6
+697  826-58-8051      B  Mandalay        Normal   Male      Home and lifestyle       62.19         4  12.4380  261.1980   1/6/2019  19:46      Ewallet  248.76                 4.761905       12.4380     4.3
+701  176-64-7711      B  Mandalay        Normal   Male      Food and beverages       32.32         3   4.8480  101.8080  3/27/2019  19:11  Credit card   96.96                 4.761905        4.8480     4.3
+761  525-09-8450      B  Mandalay        Normal   Male  Electronic accessories       72.13        10  36.0650  757.3650  1/31/2019  15:12  Credit card  721.30                 4.761905       36.0650     4.2
+795  605-83-1050      B  Mandalay        Normal   Male     Fashion accessories       27.18         2   2.7180   57.0780  3/15/2019  16:26      Ewallet   54.36                 4.761905        2.7180     4.3
+895  699-88-1972      B  Mandalay        Normal   Male       Health and beauty       99.16         8  39.6640  832.9440  1/28/2019  17:47  Credit card  793.28                 4.761905       39.6640     4.2
+947  676-10-2200      B  Mandalay        Member   Male     Fashion accessories       53.78         1   2.6890   56.4690   2/3/2019  20:13      Ewallet   53.78                 4.761905        2.6890     4.7
+977  518-71-6847      B  Mandalay        Member   Male      Food and beverages       26.60         6   7.9800  167.5800  2/26/2019  15:10      Ewallet  159.60                 4.761905        7.9800     4.9}
+2025-03-12 14:23:03 [INFO] Executing Step 8: ResultParsing
+2025-03-12 14:23:34 [INFO] Question: Give me a table where branch is B and Gender is Male and Rating below 5
+2025-03-12 14:23:34 [INFO] Running PandasAI with langchain_openai-chat LLM...
+2025-03-12 14:23:34 [INFO] Prompt ID: 61f2cfce-1fbc-4b6b-bb3d-2f5886e804f2
+2025-03-12 14:23:34 [INFO] Executing Pipeline: GenerateChatPipeline
+2025-03-12 14:23:34 [INFO] Executing Step 0: ValidatePipelineInput
+2025-03-12 14:23:34 [INFO] Executing Step 1: CacheLookup
+2025-03-12 14:23:34 [INFO] Using cached response
+2025-03-12 14:23:34 [INFO] Executing Step 2: PromptGeneration
+2025-03-12 14:23:34 [INFO] Executing Step 2: Skipping...
+2025-03-12 14:23:34 [INFO] Executing Step 3: CodeGenerator
+2025-03-12 14:23:34 [INFO] Executing Step 3: Skipping...
+2025-03-12 14:23:34 [INFO] Executing Step 4: CachePopulation
+2025-03-12 14:23:34 [INFO] Executing Step 4: Skipping...
+2025-03-12 14:23:34 [INFO] Executing Step 5: CodeCleaning
+2025-03-12 14:23:34 [INFO] 
+Code running:
+```
+df = dfs[0]
+filtered_df = df[(df['Branch'] == 'B') & (df['Gender'] == 'Male') & (df['Rating'] < 5)]
+result = {'type': 'dataframe', 'value': filtered_df}
+        ```
+2025-03-12 14:23:34 [INFO] Executing Step 6: CodeExecution
+2025-03-12 14:23:34 [INFO] Executing Step 7: ResultValidation
+2025-03-12 14:23:34 [INFO] Answer: {'type': 'dataframe', 'value':       Invoice ID Branch      City Customer type Gender            Product line  Unit price  Quantity   Tax 5%     Total       Date   Time      Payment    cogs  gross margin percentage  gross income  Rating
+22   273-16-6619      B  Mandalay        Normal   Male      Home and lifestyle       33.20         2   3.3200   69.7200  3/15/2019  12:20  Credit card   66.40                 4.761905        3.3200     4.4
+30   871-79-8483      B  Mandalay        Normal   Male     Fashion accessories       94.13         5  23.5325  494.1825  2/25/2019  19:39  Credit card  470.65                 4.761905       23.5325     4.8
+31   149-71-6266      B  Mandalay        Member   Male       Sports and travel       78.07         9  35.1315  737.7615  1/28/2019  12:43         Cash  702.63                 4.761905       35.1315     4.5
+119  378-24-2715      B  Mandalay        Normal   Male      Home and lifestyle       53.44         2   5.3440  112.2240  1/20/2019  20:38      Ewallet  106.88                 4.761905        5.3440     4.1
+122  219-22-9386      B  Mandalay        Member   Male       Sports and travel       99.96         9  44.9820  944.6220   3/9/2019  17:26  Credit card  899.64                 4.761905       44.9820     4.2
+212  142-63-6033      B  Mandalay        Normal   Male      Home and lifestyle       92.36         5  23.0900  484.8900  3/20/2019  19:17      Ewallet  461.80                 4.761905       23.0900     4.9
+213  656-16-1063      B  Mandalay        Normal   Male       Sports and travel       46.42         3   6.9630  146.2230   1/4/2019  13:24  Credit card  139.26                 4.761905        6.9630     4.4
+226  836-82-5858      B  Mandalay        Member   Male       Health and beauty       69.37         9  31.2165  655.5465  1/26/2019  19:14      Ewallet  624.33                 4.761905       31.2165     4.0
+249  785-13-7708      B  Mandalay        Normal   Male      Food and beverages       73.06         7  25.5710  536.9910  1/14/2019  19:06  Credit card  511.42                 4.761905       25.5710     4.2
+301  573-10-3877      B  Mandalay        Member   Male       Health and beauty       39.01         1   1.9505   40.9605  3/12/2019  16:46  Credit card   39.01                 4.761905        1.9505     4.7
+328  730-61-8757      B  Mandalay        Member   Male       Health and beauty       51.13         4  10.2260  214.7460  1/25/2019  10:11  Credit card  204.52                 4.761905       10.2260     4.0
+353  565-67-6697      B  Mandalay        Member   Male      Home and lifestyle       27.00         9  12.1500  255.1500   3/2/2019  14:16         Cash  243.00                 4.761905       12.1500     4.8
+467  554-53-3790      B  Mandalay        Normal   Male       Sports and travel       37.02         6  11.1060  233.2260  3/22/2019  18:33         Cash  222.12                 4.761905       11.1060     4.5
+473  731-59-7531      B  Mandalay        Member   Male       Health and beauty       72.57         8  29.0280  609.5880  3/30/2019  17:58         Cash  580.56                 4.761905       29.0280     4.6
+545  701-23-5550      B  Mandalay        Member   Male      Home and lifestyle       38.81         4   7.7620  163.0020  3/19/2019  13:40      Ewallet  155.24                 4.761905        7.7620     4.9
+633  420-04-7590      B  Mandalay        Normal   Male      Home and lifestyle       99.70         3  14.9550  314.0550  3/18/2019  11:29      Ewallet  299.10                 4.761905       14.9550     4.7
+675  242-11-3142      B  Mandalay        Member   Male     Fashion accessories       83.77         2   8.3770  175.9170  2/24/2019  19:57         Cash  167.54                 4.761905        8.3770     4.6
+697  826-58-8051      B  Mandalay        Normal   Male      Home and lifestyle       62.19         4  12.4380  261.1980   1/6/2019  19:46      Ewallet  248.76                 4.761905       12.4380     4.3
+701  176-64-7711      B  Mandalay        Normal   Male      Food and beverages       32.32         3   4.8480  101.8080  3/27/2019  19:11  Credit card   96.96                 4.761905        4.8480     4.3
+761  525-09-8450      B  Mandalay        Normal   Male  Electronic accessories       72.13        10  36.0650  757.3650  1/31/2019  15:12  Credit card  721.30                 4.761905       36.0650     4.2
+795  605-83-1050      B  Mandalay        Normal   Male     Fashion accessories       27.18         2   2.7180   57.0780  3/15/2019  16:26      Ewallet   54.36                 4.761905        2.7180     4.3
+895  699-88-1972      B  Mandalay        Normal   Male       Health and beauty       99.16         8  39.6640  832.9440  1/28/2019  17:47  Credit card  793.28                 4.761905       39.6640     4.2
+947  676-10-2200      B  Mandalay        Member   Male     Fashion accessories       53.78         1   2.6890   56.4690   2/3/2019  20:13      Ewallet   53.78                 4.761905        2.6890     4.7
+977  518-71-6847      B  Mandalay        Member   Male      Food and beverages       26.60         6   7.9800  167.5800  2/26/2019  15:10      Ewallet  159.60                 4.761905        7.9800     4.9}
+2025-03-12 14:23:34 [INFO] Executing Step 8: ResultParsing
+2025-03-12 14:29:27 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:29:27 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:29:28 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:29:29 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:29:52 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:29:52 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:29:53 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:29:54 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:32:40 [INFO] Question: Give me a table with rating above 9.5
+2025-03-12 14:32:40 [INFO] Running PandasAI with langchain_openai-chat LLM...
+2025-03-12 14:32:40 [INFO] Prompt ID: 5a664c77-854d-48da-a511-87593ab5e9d2
+2025-03-12 14:32:40 [INFO] Executing Pipeline: GenerateChatPipeline
+2025-03-12 14:32:40 [INFO] Executing Step 0: ValidatePipelineInput
+2025-03-12 14:32:40 [INFO] Executing Step 1: CacheLookup
+2025-03-12 14:32:40 [INFO] Executing Step 2: PromptGeneration
+2025-03-12 14:32:40 [INFO] Using prompt: dfs[0]:
+  name: null
+  description: null
+  type: pd.DataFrame
+  rows: 1000
+  columns: 17
+  schema:
+    fields:
+    - name: Invoice ID
+      type: object
+      samples:
+      - 442-48-3607
+      - 525-09-8450
+      - 284-34-9626
+    - name: Branch
+      type: object
+      samples:
+      - C
+      - A
+      - B
+    - name: City
+      type: object
+      samples:
+      - Mandalay
+      - Naypyitaw
+      - Yangon
+    - name: Customer type
+      type: object
+      samples:
+      - Member
+      - Member
+      - Normal
+    - name: Gender
+      type: object
+      samples:
+      - Male
+      - Female
+      - Female
+    - name: Product line
+      type: object
+      samples:
+      - Fashion accessories
+      - Food and beverages
+      - Electronic accessories
+    - name: Unit price
+      type: float64
+      samples:
+      - 66.52
+      - 11.85
+      - 65.97
+    - name: Quantity
+      type: int64
+      samples:
+      - 3
+      - 1
+      - 4
+    - name: Tax 5%
+      type: float64
+      samples:
+      - 13.71
+      - 4.602
+      - 7.239
+    - name: Total
+      type: float64
+      samples:
+      - 85.5855
+      - 587.664
+      - 125.664
+    - name: Date
+      type: object
+      samples:
+      - 3/4/2019
+      - 3/29/2019
+      - 2/25/2019
+    - name: Time
+      type: object
+      samples:
+      - '10:11'
+      - '14:53'
+      - '18:17'
+    - name: Payment
+      type: object
+      samples:
+      - Cash
+      - Credit card
+      - Ewallet
+    - name: cogs
+      type: float64
+      samples:
+      - 34.81
+      - 331.72
+      - 878.7
+    - name: gross margin percentage
+      type: float64
+      samples:
+      - 4.761904762
+      - 4.761904762
+      - 4.761904762
+    - name: gross income
+      type: float64
+      samples:
+      - 37.8405
+      - 43.866
+      - 15.768
+    - name: Rating
+      type: float64
+      samples:
+      - 6.3
+      - 8.6
+      - 8.0
+
+
+
+
+Update this initial code:
+```python
+# TODO: import the required dependencies
+import pandas as pd
+
+# Write code here
+
+# Declare result var: 
+type (possible values "string", "number", "dataframe", "plot"). Examples: { "type": "string", "value": f"The highest salary is {highest_salary}." } or { "type": "number", "value": 125 } or { "type": "dataframe", "value": pd.DataFrame({...}) } or { "type": "plot", "value": "temp_chart.png" }
+
+```
+
+
+
+### QUERY
+ Give me a table with rating above 9.5
+
+Variable `dfs: list[pd.DataFrame]` is already declared.
+
+At the end, declare "result" variable as a dictionary of type and value.
+
+If you are asked to plot a chart, use "matplotlib" for charts, save as png.
+
+
+Generate python code and return full updated code:
+2025-03-12 14:32:40 [INFO] Executing Step 3: CodeGenerator
+2025-03-12 14:32:43 [INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-12 14:32:43 [INFO] Prompt used:
+            
+dfs[0]:
+  name: null
+  description: null
+  type: pd.DataFrame
+  rows: 1000
+  columns: 17
+  schema:
+    fields:
+    - name: Invoice ID
+      type: object
+      samples:
+      - 442-48-3607
+      - 525-09-8450
+      - 284-34-9626
+    - name: Branch
+      type: object
+      samples:
+      - C
+      - A
+      - B
+    - name: City
+      type: object
+      samples:
+      - Mandalay
+      - Naypyitaw
+      - Yangon
+    - name: Customer type
+      type: object
+      samples:
+      - Member
+      - Member
+      - Normal
+    - name: Gender
+      type: object
+      samples:
+      - Male
+      - Female
+      - Female
+    - name: Product line
+      type: object
+      samples:
+      - Fashion accessories
+      - Food and beverages
+      - Electronic accessories
+    - name: Unit price
+      type: float64
+      samples:
+      - 66.52
+      - 11.85
+      - 65.97
+    - name: Quantity
+      type: int64
+      samples:
+      - 3
+      - 1
+      - 4
+    - name: Tax 5%
+      type: float64
+      samples:
+      - 13.71
+      - 4.602
+      - 7.239
+    - name: Total
+      type: float64
+      samples:
+      - 85.5855
+      - 587.664
+      - 125.664
+    - name: Date
+      type: object
+      samples:
+      - 3/4/2019
+      - 3/29/2019
+      - 2/25/2019
+    - name: Time
+      type: object
+      samples:
+      - '10:11'
+      - '14:53'
+      - '18:17'
+    - name: Payment
+      type: object
+      samples:
+      - Cash
+      - Credit card
+      - Ewallet
+    - name: cogs
+      type: float64
+      samples:
+      - 34.81
+      - 331.72
+      - 878.7
+    - name: gross margin percentage
+      type: float64
+      samples:
+      - 4.761904762
+      - 4.761904762
+      - 4.761904762
+    - name: gross income
+      type: float64
+      samples:
+      - 37.8405
+      - 43.866
+      - 15.768
+    - name: Rating
+      type: float64
+      samples:
+      - 6.3
+      - 8.6
+      - 8.0
+
+
+
+
+Update this initial code:
+```python
+# TODO: import the required dependencies
+import pandas as pd
+
+# Write code here
+
+# Declare result var: 
+type (possible values "string", "number", "dataframe", "plot"). Examples: { "type": "string", "value": f"The highest salary is {highest_salary}." } or { "type": "number", "value": 125 } or { "type": "dataframe", "value": pd.DataFrame({...}) } or { "type": "plot", "value": "temp_chart.png" }
+
+```
+
+
+
+### QUERY
+ Give me a table with rating above 9.5
+
+Variable `dfs: list[pd.DataFrame]` is already declared.
+
+At the end, declare "result" variable as a dictionary of type and value.
+
+If you are asked to plot a chart, use "matplotlib" for charts, save as png.
+
+
+Generate python code and return full updated code:
+            
+2025-03-12 14:32:43 [INFO] Code generated:
+            ```
+            # TODO: import the required dependencies
+import pandas as pd
+
+# Write code here
+df = dfs[0]
+high_rating_df = df[df['Rating'] > 9.5]
+
+# Declare result var: 
+result = { "type": "dataframe", "value": high_rating_df }
+            ```
+            
+2025-03-12 14:32:43 [INFO] Executing Step 4: CachePopulation
+2025-03-12 14:32:43 [INFO] Executing Step 5: CodeCleaning
+2025-03-12 14:32:43 [INFO] 
+Code running:
+```
+df = dfs[0]
+high_rating_df = df[df['Rating'] > 9.5]
+result = {'type': 'dataframe', 'value': high_rating_df}
+        ```
+2025-03-12 14:32:43 [INFO] Executing Step 6: CodeExecution
+2025-03-12 14:32:43 [INFO] Executing Step 7: ResultValidation
+2025-03-12 14:32:43 [INFO] Answer: {'type': 'dataframe', 'value':       Invoice ID Branch       City Customer type  Gender            Product line  Unit price  Quantity   Tax 5%     Total       Date   Time      Payment    cogs  gross margin percentage  gross income  Rating
+1    226-31-3081      C  Naypyitaw        Normal  Female  Electronic accessories       15.28         5   3.8200   80.2200   3/8/2019  10:29         Cash   76.40                 4.761905        3.8200     9.6
+23   636-48-8204      A     Yangon        Normal    Male  Electronic accessories       34.56         5   8.6400  181.4400  2/17/2019  11:15      Ewallet  172.80                 4.761905        8.6400     9.9
+28   145-94-9061      B   Mandalay        Normal  Female      Food and beverages       88.36         5  22.0900  463.8900  1/25/2019  19:48         Cash  441.80                 4.761905       22.0900     9.6
+60   285-68-5083      C  Naypyitaw        Member  Female       Sports and travel       24.74         3   3.7110   77.9310  2/15/2019  17:47  Credit card   74.22                 4.761905        3.7110    10.0
+62   347-34-2234      B   Mandalay        Member  Female       Sports and travel       55.07         9  24.7815  520.4115   2/3/2019  13:40      Ewallet  495.63                 4.761905       24.7815    10.0
+..           ...    ...        ...           ...     ...                     ...         ...       ...      ...       ...        ...    ...          ...     ...                      ...           ...     ...
+882  311-13-6971      B   Mandalay        Member    Male       Sports and travel       31.99        10  15.9950  335.8950  2/20/2019  15:18  Credit card  319.90                 4.761905       15.9950     9.9
+934  501-61-1753      B   Mandalay        Normal  Female      Home and lifestyle       63.15         6  18.9450  397.8450   1/3/2019  20:24      Ewallet  378.90                 4.761905       18.9450     9.8
+960  256-58-3609      C  Naypyitaw        Member    Male     Fashion accessories       91.98         1   4.5990   96.5790  3/18/2019  15:29         Cash   91.98                 4.761905        4.5990     9.8
+961  324-92-3863      A     Yangon        Member    Male  Electronic accessories       20.89         2   2.0890   43.8690   2/5/2019  18:45         Cash   41.78                 4.761905        2.0890     9.8
+980  728-47-9078      C  Naypyitaw        Member    Male      Food and beverages       59.59         4  11.9180  250.2780  1/19/2019  12:46         Cash  238.36                 4.761905       11.9180     9.8
+
+[71 rows x 17 columns]}
+2025-03-12 14:32:43 [INFO] Executing Step 8: ResultParsing

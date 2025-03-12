@@ -2,6 +2,9 @@ from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
+import numpy as np
+from fastapi import HTTPException, Depends
+from fastapi.encoders import jsonable_encoder
 
 from auth import verify_firebase_token
 import session_manager
@@ -54,6 +57,26 @@ def load_data(file_bytes: BytesIO):
             raise ValueError("Unsupported file format.")
     except Exception as e:
         raise ValueError(f"Error loading file: {e}")
+    
+    
+    
+def convert_numpy_types(obj):
+    """
+    Recursively convert NumPy data types into native Python types.
+    """
+    if isinstance(obj, np.generic):
+        # Convert NumPy scalar (np.int64, np.float64, etc.) to Python scalar
+        return obj.item()
+    elif isinstance(obj, dict):
+        # Recursively convert within a dictionary
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        # Recursively convert within a list
+        return [convert_numpy_types(element) for element in obj]
+    return obj
+
+
+
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase_token)):
@@ -91,9 +114,11 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
     """
     if "query" not in data:
         raise HTTPException(status_code=400, detail="Missing query in request.")
+    
     user_query = data["query"]
     user_id = user["uid"]
     session = session_manager.get_session(user_id)
+    
     if "df" not in session or session["df"] is None:
         raise HTTPException(status_code=400, detail="No dataset uploaded.")
 
@@ -103,12 +128,47 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             manipulation_prompt = generate_data_manipulation_prompt(user_query, session["df"])
             processed_df = process_dataframe(manipulation_prompt, session["df"])
             fig = create_visualization(processed_df, user_query)
-            # Return the Plotly figure as JSON so the React frontend can render it
+            # Serialize the Plotly figure as JSON so that the React frontend can render it
             fig_json = fig.to_json()
             result = {"type": "plot", "content": fig_json}
+            
+            
         elif query_type == "table":
+            agent = create_pandas_dataframe_agent(
+                llm,
+                session["df"],
+                verbose=True,
+                allow_dangerous_code=True
+            )
+            
+            # Explicitly instruct agent to return code that generates a dataframe
+            agent_query = f"""
+            {user_query}
+            Provide Python code to achieve this as a pandas DataFrame named `result_df`. Do not include explanations.
+            """
+
+            agent_response = agent.run(agent_query)
+
+            # Execute the provided code safely in local scope
+            local_vars = {'df': session["df"]}
+            try:
+                exec(agent_response, {}, local_vars)
+                result_df = local_vars.get('result_df', pd.DataFrame({"Result": ["No data generated."]}))
+            except Exception as e:
+                result_df = pd.DataFrame({"Error": [str(e)]})
+
+            result = {
+                "type": "table",
+                "content": result_df.to_dict(orient="records")
+            }
+
+
+
+            '''
             result_text = get_df(session["df"], user_query)
-            result = {"type": "text", "content": result_text}
+            converted_result = convert_numpy_types(result_text)
+            result = {"type": "text", "content": converted_result}
+            '''
         else:  # answer
             agent = create_pandas_dataframe_agent(
                 llm,
@@ -122,10 +182,12 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
         # Save the query and its response in the session
         session.setdefault("queries", []).append(user_query)
         session.setdefault("answers", []).append(result)
-        return result
+        
+        # Convert numpy types before encoding
+        result_converted = convert_numpy_types(result)
+        return jsonable_encoder(result_converted)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/session")
 def get_session_data(user=Depends(verify_firebase_token)):
     """

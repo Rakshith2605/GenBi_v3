@@ -1,8 +1,9 @@
-import pandas as pd
+import polars as pl
+import io
 
 def load_data(file):
     """
-    Load data from various file formats (CSV, Excel, JSON).
+    Load data from various file formats (CSV, Excel, JSON) using Polars.
     The input 'file' should be a file-like object with a name attribute.
     """
     filename = getattr(file, "name", "")
@@ -10,30 +11,21 @@ def load_data(file):
 
     try:
         if file_extension == 'csv':
-            df = pd.read_csv(file)
+            df = pl.read_csv(file)
         elif file_extension in ['xlsx', 'xls']:
-            df = pd.read_excel(file)
+            df = pl.read_excel(io.BytesIO(file.read()))  # Convert file object for Polars
         elif file_extension == 'json':
-            df = pd.read_json(file)
+            df = pl.read_json(io.BytesIO(file.read()))  # Convert file object for Polars
         else:
             return None
 
-        # Attempt to convert columns to numeric where possible.
-        for col in df.columns:
-            try:
-                # Option A: Convert invalid values to NaN instead of ignoring
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
-
-                # Option B: Wrap in try/except if you want custom handling
-                try:
-                    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''))
-                except ValueError:
-                    # Handle or log the error for that column
-                    pass
-
-            except Exception:
-                continue
+        # Convert columns to numeric where possible
+        df = df.with_columns([
+            pl.col(col).str.replace(',', '').cast(pl.Float64, strict=False)  # Convert to numeric
+            for col in df.columns if df[col].dtype == pl.Utf8
+        ])
 
         return df
-    except Exception:
+    except Exception as e:
+        print(f"Error loading file: {e}")
         return None
