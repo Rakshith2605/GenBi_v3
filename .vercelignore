@@ -1,18 +1,19 @@
-# Python caches
+# Ignore Python bytecode caches
 __pycache__/
 **/__pycache__/
 
-# Local virtual environments
+# Ignore local virtual environment folders (if any)
 .venv/
 venv/
 env/
 
-# Cache or DB files (only if not needed at runtime)
+# Ignore any cache or database files (unless needed at runtime)
 cache/
 *.db
 
-# OS/editor artifacts
+# Ignore Firebase credentials file (if you’re using the environment variable instead)
+firebase_credentials.json
+
+# Ignore OS and editor artifacts
 .DS_Store
 .vscode/
-
-
