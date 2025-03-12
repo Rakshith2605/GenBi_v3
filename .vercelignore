@@ -1,0 +1,18 @@
+# Python caches
+__pycache__/
+**/__pycache__/
+
+# Local virtual environments
+.venv/
+venv/
+env/
+
+# Cache or DB files (only if not needed at runtime)
+cache/
+*.db
+
+# OS/editor artifacts
+.DS_Store
+.vscode/
+
+
