@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
+import session_manager  
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
 import numpy as np
-from fastapi import HTTPException, Depends
 from fastapi.encoders import jsonable_encoder
 
 from auth import verify_firebase_token
-import session_manager
+import session_manager  # Now using Firestore-based session management
 from file_processor import load_data
 from agents.classifier import classify_query
 from agents.prompt_generator import generate_data_manipulation_prompt
@@ -17,19 +18,17 @@ from agents.table_generator import get_df
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_community.chat_models import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
-from fastapi import UploadFile, File, HTTPException, Depends
 from io import BytesIO
-import pandas as pd
 
-# Initialize a global LLM instance using the key from .env
+# Initialize a global LLM instance using OpenAI API
 llm = ChatOpenAI(temperature=0, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
 
 app = FastAPI()
 
-# Configure CORS so your React app can access these endpoints.
+# Configure CORS so your frontend can access these endpoints.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domain here.
+    allow_origins=["*"],  # Change this to your frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +36,7 @@ app.add_middleware(
 
 @app.get("/")
 def health_check():
+    """Check if the API is running."""
     return {"status": "ok"}
 
 
@@ -76,8 +76,6 @@ def convert_numpy_types(obj):
     return obj
 
 
-
-
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase_token)):
     """
@@ -95,8 +93,8 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase
         
         # Save dataframe in the user’s session (using the Firebase UID as key)
         user_id = user["uid"]
-        session = session_manager.get_session(user_id)
-        session["df"] = df
+        session_manager.update_session(user_id, "df", df)
+
 
         return {
             "message": "File uploaded successfully.",
@@ -106,6 +104,7 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/query")
 async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)):
     """
@@ -114,12 +113,12 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
     """
     if "query" not in data:
         raise HTTPException(status_code=400, detail="Missing query in request.")
-    
+
     user_query = data["query"]
     user_id = user["uid"]
     session = session_manager.get_session(user_id)
-    
-    if "df" not in session or session["df"] is None:
+
+    if not session or "df" not in session or session["df"] is None:
         raise HTTPException(status_code=400, detail="No dataset uploaded.")
 
     query_type = classify_query(user_query)
@@ -128,11 +127,11 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             manipulation_prompt = generate_data_manipulation_prompt(user_query, session["df"])
             processed_df = process_dataframe(manipulation_prompt, session["df"])
             fig = create_visualization(processed_df, user_query)
-            # Serialize the Plotly figure as JSON so that the React frontend can render it
+
+            # Serialize Plotly figure as JSON for frontend rendering
             fig_json = fig.to_json()
             result = {"type": "plot", "content": fig_json}
-            
-            
+
         elif query_type == "table":
             agent = create_pandas_dataframe_agent(
                 llm,
@@ -140,16 +139,16 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
                 verbose=True,
                 allow_dangerous_code=True
             )
-            
-            # Explicitly instruct agent to return code that generates a dataframe
+
+            # Ask LangChain to generate a Pandas DataFrame
             agent_query = f"""
             {user_query}
-            Provide Python code to achieve this as a pandas DataFrame named `result_df`. Do not include explanations.
+            Provide Python code to generate a Pandas DataFrame named `result_df`.
+            Do not include explanations.
             """
-
             agent_response = agent.run(agent_query)
 
-            # Execute the provided code safely in local scope
+            # Execute generated code safely
             local_vars = {'df': session["df"]}
             try:
                 exec(agent_response, {}, local_vars)
@@ -162,14 +161,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
                 "content": result_df.to_dict(orient="records")
             }
 
-
-
-            '''
-            result_text = get_df(session["df"], user_query)
-            converted_result = convert_numpy_types(result_text)
-            result = {"type": "text", "content": converted_result}
-            '''
-        else:  # answer
+        else:  # Query Type: Answer
             agent = create_pandas_dataframe_agent(
                 llm,
                 session["df"],
@@ -179,23 +171,26 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             answer = agent.run(user_query)
             result = {"type": "text", "content": answer}
 
-        # Save the query and its response in the session
+        # Store query history in Firestore
         session.setdefault("queries", []).append(user_query)
         session.setdefault("answers", []).append(result)
-        
-        # Convert numpy types before encoding
-        result_converted = convert_numpy_types(result)
-        return jsonable_encoder(result_converted)
+        session_manager.update_session(user_id, "queries", session["queries"])
+        session_manager.update_session(user_id, "answers", session["answers"])
+
+        return jsonable_encoder(convert_numpy_types(result))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/session")
 def get_session_data(user=Depends(verify_firebase_token)):
     """
     Retrieve session information (queries, answers, and a summary of the uploaded dataset)
-    for the authenticated user.
+    from Firestore for the authenticated user.
     """
     user_id = user["uid"]
     session = session_manager.get_session(user_id)
+
     session_info = {
         "queries": session.get("queries", []),
         "answers": session.get("answers", []),
@@ -205,6 +200,7 @@ def get_session_data(user=Depends(verify_firebase_token)):
         }
     }
     return session_info
+
 
 if __name__ == "__main__":
     import uvicorn
