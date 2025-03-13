@@ -1,5 +1,11 @@
+from fastapi import FastAPI
 from mangum import Mangum
-from main import app  # Adjust this if your FastAPI app file is named differently
 
-# Create a handler that Vercel will use as the entrypoint
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI on Vercel!"}
+
+# Vercel ASGI adapter
 handler = Mangum(app)
