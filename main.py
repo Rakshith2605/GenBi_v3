@@ -185,19 +185,14 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
 @app.get("/session")
 def get_session_data(user=Depends(verify_firebase_token)):
     """
-    Retrieve session information (queries, answers, and a summary of the uploaded dataset)
-    from Firestore for the authenticated user.
+    Retrieve session information (queries and answers) from Firestore for the authenticated user.
     """
     user_id = user["uid"]
     session = session_manager.get_session(user_id)
-
+    
     session_info = {
         "queries": session.get("queries", []),
         "answers": session.get("answers", []),
-        "data_summary": {
-            "columns": list(session["df"].columns) if session.get("df") is not None else [],
-            "rows": len(session["df"]) if session.get("df") is not None else 0,
-        }
     }
     return session_info
 
