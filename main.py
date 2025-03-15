@@ -162,13 +162,25 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             }
 
         else:  # Query Type: Answer
+            detailed_prompt = """
+            You are an expert data analyst working with pandas DataFrames.
+            When answering the user query, please explain your reasoning in detail,
+            including intermediate steps, data exploration, and analysis before presenting your final answer.
+            """
+
+            # Create the agent with your custom prompt and desired settings.
             agent = create_pandas_dataframe_agent(
                 llm,
                 session["df"],
                 verbose=True,
-                allow_dangerous_code=True
+                allow_dangerous_code=True,
+                prompt=detailed_prompt  # Pass the detailed prompt to the agent (if supported)
             )
+
+            # Run the agent with the user query.
             answer = agent.run(user_query)
+
+            # Format the result.
             result = {"type": "text", "content": answer}
 
         # Store query history in Firestore
