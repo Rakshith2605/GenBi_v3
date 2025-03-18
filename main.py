@@ -282,6 +282,29 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(element) for element in obj]
     return obj
 
+
+@app.post("/verify-user")
+async def verify_user(user=Depends(verify_firebase_token)):
+    """
+    Verify user authentication with Firebase and return user details.
+    This endpoint ensures the user is logged in before allowing access to the dashboard.
+    """
+    try:
+        user_id = user.get("uid")
+        email = user.get("email", "Unknown Email")
+        name = user.get("name", "Unknown User")
+
+        return {
+            "message": "User verified successfully",
+            "user_id": user_id,
+            "email": email,
+            "name": name
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+
+
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase_token)):
     """Upload a dataset file (CSV, Excel, or JSON) and store it in the in-memory session."""
