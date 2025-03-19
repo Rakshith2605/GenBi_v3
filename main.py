@@ -133,6 +133,8 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             result = {"type": "plot", "content": fig_json}
 
         elif query_type == "table":
+            
+            '''
             agent = create_pandas_dataframe_agent(
                 llm,
                 session["df"],
@@ -159,7 +161,9 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             result = {
                 "type": "table",
                 "content": result_df.to_dict(orient="records")
-            }
+            }'''
+            result_text = get_df(session["df"], user_query)
+            result = {"type": "text", "content": result_text}
 
         else:  # Query Type: Answer
             detailed_prompt = """
