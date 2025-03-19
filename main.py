@@ -133,37 +133,33 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             result = {"type": "plot", "content": fig_json}
 
         elif query_type == "table":
-            
-            '''
-            agent = create_pandas_dataframe_agent(
-                llm,
-                session["df"],
-                verbose=True,
-                allow_dangerous_code=True
-            )
-
-            # Ask LangChain to generate a Pandas DataFrame
-            agent_query = f"""
-            {user_query}
-            Provide Python code to generate a Pandas DataFrame named `result_df`.
-            Do not include explanations.
-            """
-            agent_response = agent.run(agent_query)
-
-            # Execute generated code safely
-            local_vars = {'df': session["df"]}
             try:
-                exec(agent_response, {}, local_vars)
-                result_df = local_vars.get('result_df', pd.DataFrame({"Result": ["No data generated."]}))
-            except Exception as e:
-                result_df = pd.DataFrame({"Error": [str(e)]})
+                # Ensure the DataFrame exists in the session
+                df = session.get("df", pd.DataFrame())
+                if df.empty:
+                    result = {"type": "table", "content": [{"Error": "Session DataFrame is empty or missing."}]}
+                else:
+                    # Create a LangChain Pandas agent
+                    agent = create_pandas_dataframe_agent(
+                        llm, df, verbose=True, allow_dangerous_code=False
+                    )
 
-            result = {
-                "type": "table",
-                "content": result_df.to_dict(orient="records")
-            }'''
-            result_text = get_df(session["df"], user_query)
-            result = {"type": "text", "content": result_text}
+                    # Generate code to produce a Pandas DataFrame named `result_df`
+                    agent_query = f"{user_query}\nProvide Python code to generate a Pandas DataFrame named `result_df`."
+                    agent_response = agent.run(agent_query)
+
+                    # Secure execution environment
+                    local_vars = {"df": df}
+                    exec(agent_response, {"__builtins__": {}}, local_vars)  # Restrict built-ins
+
+                    # Retrieve the generated DataFrame
+                    result_df = local_vars.get("result_df", pd.DataFrame({"Result": ["No data generated."]}))
+
+                    result = {"type": "table", "content": result_df.to_dict(orient="records")}
+
+            except Exception as e:
+                result = {"type": "table", "content": [{"Error": str(e)}]}
+
 
         else:  # Query Type: Answer
             detailed_prompt = """
