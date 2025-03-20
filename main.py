@@ -85,24 +85,26 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_firebase
         contents = await file.read()
         file_bytes = BytesIO(contents)
         file_bytes.name = file.filename  # assign name attribute for file type detection
-
+        global df
         df = load_data(file_bytes)
-        print(df.head())
+        
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="Failed to process file: DataFrame is empty.")
         
-        # Save dataframe in the user’s session (using the Firebase UID as key)
+        # Save only the top 10 rows in the user's session
         user_id = user["uid"]
-        session_manager.update_session(user_id, "df", df)
-
+        session_manager.update_session(user_id, "df", df.head(10))
 
         return {
             "message": "File uploaded successfully.",
             "columns": list(df.columns),
-            "rows": len(df)
+            "rows": len(df),
+            "df": df.head(10).to_dict(orient="records")  # Convert to dict for JSON serialization
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 @app.post("/query")
@@ -125,7 +127,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
     try:
         if query_type == "plot":
             manipulation_prompt = generate_data_manipulation_prompt(user_query, session["df"])
-            processed_df = process_dataframe(manipulation_prompt, session["df"])
+            processed_df = process_dataframe(manipulation_prompt, df)
             fig = create_visualization(processed_df, user_query)
 
             # Serialize Plotly figure as JSON for frontend rendering
@@ -135,7 +137,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
         elif query_type == "table":
             agent = create_pandas_dataframe_agent(
                 llm,
-                session["df"],
+                df,
                 verbose=True,
                 allow_dangerous_code=True
             )
@@ -149,7 +151,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             agent_response = agent.run(agent_query)
 
             # Execute generated code safely
-            local_vars = {'df': session["df"]}
+            local_vars = {'df': df}
             try:
                 exec(agent_response, {}, local_vars)
                 result_df = local_vars.get('result_df', pd.DataFrame({"Result": ["No data generated."]}))
@@ -172,7 +174,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_firebase_token)
             # Create the agent with your custom prompt and desired settings.
             agent = create_pandas_dataframe_agent(
                 llm,
-                session["df"],
+                df,
                 verbose=True,
                 allow_dangerous_code=True,
                 prompt=detailed_prompt  # Pass the detailed prompt to the agent (if supported)
