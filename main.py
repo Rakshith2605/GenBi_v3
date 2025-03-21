@@ -97,55 +97,78 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
 # ✅ Fix Query Processing
 @app.post("/query")
 async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)):
+    print(df.head())
     if "query" not in data:
         raise HTTPException(status_code=400, detail="Missing query in request.")
 
     user_query = data["query"]
     user_id = user["sub"]  # 🔄 Supabase user ID
-    session = session_manager.get_session(user_id)
+    #session = session_manager.get_session(user_id)
 
-    if not session or "df" not in session or session["df"] is None:
-        raise HTTPException(status_code=400, detail="No dataset uploaded.")
+    #if not session or "df" not in session or session["df"] is None:
+        #raise HTTPException(status_code=400, detail="No dataset uploaded.")
 
     query_type = classify_query(user_query)
     try:
         if query_type == "plot":
-            manipulation_prompt = generate_data_manipulation_prompt(user_query, session["df"])
-            processed_df = process_dataframe(manipulation_prompt, session["df"])
+            manipulation_prompt = generate_data_manipulation_prompt(user_query, df)
+            processed_df = process_dataframe(manipulation_prompt, df)
             fig = create_visualization(processed_df, user_query)
             result = {"type": "plot", "content": fig.to_json()}
 
         elif query_type == "table":
-            agent = create_pandas_dataframe_agent(llm, session["df"], verbose=True, allow_dangerous_code=True)
-            agent_query = f"""
-            {user_query}
-            Provide Python code to generate a Pandas DataFrame named `result_df`.
-            Do not include explanations.
-            """
-            agent_response = agent.run(agent_query)
-
-            local_vars = {'df': session["df"]}
             try:
-                exec(agent_response, {}, local_vars)
-                result_df = local_vars.get('result_df', pd.DataFrame({"Result": ["No data generated."]}))
-            except Exception as e:
-                result_df = pd.DataFrame({"Error": [str(e)]})
+                # Create the agent
+                agent = create_pandas_dataframe_agent(
+                    llm, df, verbose=True, allow_dangerous_code=True
+                )
 
-            result = {"type": "table", "content": result_df.to_dict(orient="records")}
+                # Create the minimal, clear prompt
+                agent_prompt = (
+                    f"{user_query}\n"
+                    "Return only Python code that defines a DataFrame named `result_df`."
+                )
+
+                # Run the agent to get the code
+                generated_code = agent.run(agent_prompt)
+                print("📦 Generated code:\n", generated_code)  # Optional debug log
+
+                # Execute the code safely
+                exec_env = {'df': df}
+                exec(generated_code, {}, exec_env)
+
+                result_df = exec_env.get('result_df')
+
+                # If result_df is missing or not a DataFrame
+                if not isinstance(result_df, pd.DataFrame):
+                    raise ValueError("Generated code did not produce a valid DataFrame named `result_df`.")
+
+                result = {
+                    "type": "table",
+                    "content": result_df.to_dict(orient="records")
+                }
+
+            except Exception as e:
+                print(f"❌ Error executing agent code: {e}")
+                result = {
+                    "type": "table",
+                    "content": pd.DataFrame({"Error": [str(e)]}).to_dict(orient="records")
+                }
+
 
         else:
             detailed_prompt = """
             You are an expert data analyst working with pandas DataFrames.
             When answering the user query, please explain your reasoning in detail.
             """
-            agent = create_pandas_dataframe_agent(llm, session["df"], verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
+            agent = create_pandas_dataframe_agent(llm, df, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
             answer = agent.run(user_query)
             result = {"type": "text", "content": answer}
 
-        session.setdefault("queries", []).append(user_query)
-        session.setdefault("answers", []).append(result)
-        session_manager.update_session(user_id, "queries", session["queries"])
-        session_manager.update_session(user_id, "answers", session["answers"])
+        #session.setdefault("queries", []).append(user_query)
+        #session.setdefault("answers", []).append(result)
+        #session_manager.update_session(user_id, "queries", session["queries"])
+        #session_manager.update_session(user_id, "answers", session["answers"])
 
         return jsonable_encoder(convert_numpy_types(result))
     except Exception as e:
@@ -160,6 +183,7 @@ def get_session_data(user=Depends(verify_supabase_token)):
     session_info = {
         "queries": session.get("queries", []),
         "answers": session.get("answers", []),
+
         "data_summary": {
             "columns": list(session["df"].columns) if session.get("df") is not None else [],
             "rows": len(session["df"]) if session.get("df") is not None else 0,

@@ -65,3 +65,4 @@ twilio>=9.4.6
 
 # HTML Parsing (if needed)
 trafilatura>=2.0.0
+supabase

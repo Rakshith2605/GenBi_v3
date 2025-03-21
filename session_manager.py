@@ -1,92 +1,125 @@
 import os
+import uuid
 import psycopg2
 import pandas as pd
+from io import BytesIO
 from psycopg2.extras import RealDictCursor, Json
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
-# Establish database connection
+# Load .env variables
+load_dotenv()
+
+# ✅ Correct Supabase API Configuration
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # Use the correct service key
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "genbi-df")
+
+# ✅ Initialize Supabase Client
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ✅ Fix PostgreSQL Connection using DATABASE_URL
+DATABASE_URL = os.getenv("DATABASE_URL")  # Ensure DATABASE_URL is in your .env
+
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 def get_db_connection():
-    """Connects to the PostgreSQL database and returns the connection."""
+    """Connects to the PostgreSQL database using DATABASE_URL."""
     try:
-        conn = psycopg2.connect(
-            host=os.getenv("POSTGRES_HOST"),
-            database=os.getenv("POSTGRES_DATABASE"),
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD"),
-            cursor_factory=RealDictCursor  # Enables returning query results as dictionaries
-        )
+        DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:YOUR-PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres")
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
         print(f"❌ ERROR: Failed to connect to database: {e}")
         return None
 
-# Get user session from the database
+
+def upload_df_to_supabase(user_id: str, df: pd.DataFrame, file_name: str):
+    """Uploads DataFrame as CSV to Supabase Storage and returns metadata."""
+    csv_buffer = BytesIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)
+
+    file_path = f"{user_id}/{uuid.uuid4()}_{file_name}"
+
+    # ✅ Fix: Upload and check for errors correctly
+    response = supabase.storage.from_(SUPABASE_BUCKET).upload(file_path, csv_buffer, {"content-type": "text/csv"})
+
+    if response.error:
+        raise Exception(f"❌ Upload failed: {response.error}")
+
+    return {
+        "storage_path": f"{SUPABASE_BUCKET}/{file_path}",
+        "file_name": file_name,
+        "file_size_mb": round(csv_buffer.getbuffer().nbytes / (1024 * 1024), 2),
+        "num_rows": df.shape[0],
+        "num_columns": df.shape[1]
+    }
+
+
 def get_session(user_id: str):
-    """Retrieves a session for a given user from the database."""
+    """Fetch or create a session for a user."""
     conn = get_db_connection()
-    if conn is None:
-        return None  # If connection fails, return None
+    if not conn:
+        return None
 
     cursor = conn.cursor()
-    
-    # Check if session exists
     cursor.execute("SELECT * FROM sessions WHERE user_id = %s", (user_id,))
     session = cursor.fetchone()
 
     if session:
-        # Convert JSON to DataFrame if 'df' column exists
-        if session.get("df"):
-            session["df"] = pd.DataFrame(session["df"])
+        session_data = {
+            "session_id": session["session_id"],
+            "df_metadata": session["df_metadata"],
+            "queries": session["queries"] if session["queries"] else [],
+            "answers": session["answers"] if session["answers"] else [],
+        }
     else:
-        # If session does not exist, create a new one
-        cursor.execute("""
-            INSERT INTO sessions (user_id, df, queries, answers)
-            VALUES (%s, %s, %s, %s)
-        """, (user_id, Json(None), [], []))
+        cursor.execute(
+            "INSERT INTO sessions (session_id, user_id, df_metadata, queries, answers) VALUES (gen_random_uuid(), %s, %s, %s, %s) RETURNING session_id",
+            (user_id, Json(None), Json([]), Json([]))
+        )
+        session_id = cursor.fetchone()["session_id"]
         conn.commit()
-
-        # Retrieve the newly created session
-        cursor.execute("SELECT * FROM sessions WHERE user_id = %s", (user_id,))
-        session = cursor.fetchone()
+        session_data = {"session_id": session_id, "df_metadata": None, "queries": [], "answers": []}
 
     cursor.close()
     conn.close()
-    return session
+    return session_data
 
-# Update session data
-def update_session(user_id: str, key: str, value):
-    """Updates a session entry for a user in the database."""
+
+def update_session(session_id: str, key: str, value, user_id=None, file_name=None):
+    """Updates session with new values."""
     conn = get_db_connection()
-    if conn is None:
-        return  # If connection fails, exit function
+    if not conn:
+        return
 
     cursor = conn.cursor()
 
     if key == "df":
         if value is None:
-            cursor.execute("UPDATE sessions SET df = NULL WHERE user_id = %s", (user_id,))
+            cursor.execute("UPDATE sessions SET df_metadata = NULL WHERE session_id = %s", (session_id,))
         elif isinstance(value, pd.DataFrame):
-            df_json = value.to_dict(orient="records")  # Convert DataFrame to JSON
-            cursor.execute("UPDATE sessions SET df = %s WHERE user_id = %s", (Json(df_json), user_id))
+            metadata = upload_df_to_supabase(user_id, value, file_name)
+            cursor.execute("UPDATE sessions SET df_metadata = %s WHERE session_id = %s", (Json(metadata), session_id))
+
     elif key == "queries":
-        cursor.execute("UPDATE sessions SET queries = %s WHERE user_id = %s", (value, user_id))
+        cursor.execute(
+            "UPDATE sessions SET queries = COALESCE(queries, '[]'::jsonb) || %s WHERE session_id = %s",
+            (Json(value), session_id)
+        )
+
     elif key == "answers":
-        cursor.execute("UPDATE sessions SET answers = %s WHERE user_id = %s", (Json(value), user_id))
+        cursor.execute(
+            "UPDATE sessions SET answers = COALESCE(answers, '[]'::jsonb) || %s WHERE session_id = %s",
+            (Json(value), session_id)
+        )
+
     else:
         print(f"⚠️ Ignored update for unsupported key: {key}")
 
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-# Clear session for a user
-def clear_session(user_id: str):
-    """Deletes a user's session from the database."""
-    conn = get_db_connection()
-    if conn is None:
-        return
-
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
     conn.commit()
     cursor.close()
     conn.close()
