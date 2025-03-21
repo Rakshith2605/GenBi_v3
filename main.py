@@ -64,18 +64,23 @@ def convert_numpy_types(obj):
 
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase_token)):  # 🔄
+async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase_token)):
     try:
+        print(f"🔍 Received file: {file.filename}")  # Debugging line
+        
         contents = await file.read()
         file_bytes = BytesIO(contents)
-        file_bytes.name = file.filename
+        file_bytes.name = file.filename  # Assigning a name for pandas to detect type
+        
         global df
         df = load_data(file_bytes)
 
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="Failed to process file: DataFrame is empty.")
-
+        
         user_id = user["sub"]  # 🔄 Supabase user ID
+        print(f"✅ Storing file for user: {user_id}")  # Debugging line
+
         session_manager.update_session(user_id, "df", df.head(10))
 
         return {
@@ -85,7 +90,9 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
             "df": df.head(10).to_dict(orient="records")
         }
     except Exception as e:
+        print(f"❌ ERROR: {e}")  # Debugging line
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.post("/query")
@@ -163,4 +170,8 @@ def get_session_data(user=Depends(verify_supabase_token)):  # 🔄
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+
+    port = int(os.environ.get("PORT", 8000))  # Use Render's provided PORT
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
