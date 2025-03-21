@@ -1,34 +1,38 @@
 import os
-import json
-import firebase_admin
-from firebase_admin import auth, credentials
+import jwt
 from fastapi import Header, HTTPException
+from dotenv import load_dotenv
 
-if not firebase_admin._apps:
-    firebase_credentials = os.getenv("FIREBASE_CREDENTIALS")
-    if firebase_credentials:
-        try:
-            # Parse the JSON string from the environment variable
-            cred_dict = json.loads(firebase_credentials)
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-        except Exception as e:
-            raise Exception(f"Failed to initialize Firebase Admin SDK from env var: {str(e)}")
-    else:
-        # Fallback: Read from a file if env var is not set
-        cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "firebase_credentials.json")
-        try:
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
-        except Exception as e:
-            raise Exception(f"Failed to initialize Firebase Admin SDK from file: {str(e)}")
+# Load .env file
+load_dotenv()
 
-def verify_firebase_token(authorization: str = Header(...)):
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+
+if not SUPABASE_JWT_SECRET:
+    raise Exception("❌ ERROR: `SUPABASE_JWT_SECRET` is missing!")
+
+print("✅ Loaded SUPABASE_JWT_SECRET:", SUPABASE_JWT_SECRET[:10] + "******")
+
+def verify_supabase_token(authorization: str = Header(...)):
+    print("🔍 Received Token:", authorization)
+
     if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header.")
+        raise HTTPException(status_code=401, detail="Invalid authorization header format.")
+
     token = authorization.split("Bearer ")[1]
+
     try:
-        decoded_token = auth.verify_id_token(token)
+        decoded_token = jwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            options={"verify_aud": False}  # Try disabling audience verification
+        )
+        print("✅ Token Decoded Successfully:", decoded_token)
         return decoded_token
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired.")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Token verification error: {str(e)}")

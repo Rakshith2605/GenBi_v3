@@ -1,67 +1,57 @@
-import firebase_admin
-from firebase_admin import credentials, firestore
 import os
-import json
 import pandas as pd
+import psycopg2
+import json
+from psycopg2.extras import RealDictCursor, Json
 
-# Load Firebase credentials from environment variable
-firebase_credentials = os.getenv("FIREBASE_CREDENTIALS")
-if not firebase_credentials:
-    raise ValueError("FIREBASE_CREDENTIALS environment variable is missing")
-
-try:
-    cred_dict = json.loads(firebase_credentials)  # Parse JSON string
-
-    # Initialize Firebase only once
-    if not firebase_admin._apps:
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred)
-
-    db = firestore.client()  # Firestore client
-except Exception as e:
-    raise ValueError(f"Error initializing Firebase: {e}")
-
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("POSTGRES_HOST"),
+        database=os.getenv("POSTGRES_DATABASE"),
+        user=os.getenv("POSTGRES_USER"),
+        password=os.getenv("POSTGRES_PASSWORD")
+    )
 
 def get_session(user_id: str):
-    """Retrieve session from Firestore or create a new one.
-       The session may contain a stored DataFrame ('df') along with queries and answers.
-    """
-    doc_ref = db.collection("sessions").document(user_id)
-    doc = doc_ref.get()
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("SELECT * FROM sessions WHERE user_id = %s", (user_id,))
+    session = cursor.fetchone()
 
-    if doc.exists:
-        session_data = doc.to_dict()
-        # Convert stored DataFrame (if present) from dict to DataFrame
-        if "df" in session_data and session_data["df"]:
-            session_data["df"] = pd.DataFrame.from_dict(session_data["df"])
-        return session_data
+    if session:
+        # Convert JSON to DataFrame
+        if session.get("df"):
+            session["df"] = pd.DataFrame(session["df"])
+        return session
     else:
-        session_data = {"df": None, "queries": [], "answers": []}
-        doc_ref.set(session_data)  # Store in Firestore
-        return session_data
-
+        # Create a blank session
+        cursor.execute("""
+            INSERT INTO sessions (user_id, df, queries, answers)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, Json(None), [], []))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"df": None, "queries": [], "answers": []}
 
 def update_session(user_id: str, key: str, value):
-    """Update a specific key in the user's session in Firestore.
-    
-       For the 'df' key:
-         - If a new DataFrame is provided, it replaces the existing one.
-         - If value is None, the stored DataFrame is removed.
-       All other keys are updated normally.
-    """
-    doc_ref = db.collection("sessions").document(user_id)
-    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     if key == "df":
         if value is None:
-            # Delete the 'df' field if new value is None.
-            doc_ref.update({"df": firestore.DELETE_FIELD})
+            cursor.execute("UPDATE sessions SET df = NULL WHERE user_id = %s", (user_id,))
         elif isinstance(value, pd.DataFrame):
-            # Convert DataFrame to dictionary (list of records) and update.
-            new_df = value.to_dict(orient="records")
-            doc_ref.set({"df": new_df}, merge=True)
-        else:
-            # If the value for 'df' is not a DataFrame, ignore the update.
-            return
+            df_json = value.to_dict(orient="records")
+            cursor.execute("UPDATE sessions SET df = %s WHERE user_id = %s", (Json(df_json), user_id))
+    elif key == "queries":
+        cursor.execute("UPDATE sessions SET queries = %s WHERE user_id = %s", (value, user_id))
+    elif key == "answers":
+        cursor.execute("UPDATE sessions SET answers = %s WHERE user_id = %s", (Json(value), user_id))
     else:
-        # For other keys (e.g., queries or answers), update normally.
-        doc_ref.set({key: value}, merge=True)
+        print(f"Ignored update for unsupported key: {key}")
+
+    conn.commit()
+    cursor.close()
+    conn.close()
