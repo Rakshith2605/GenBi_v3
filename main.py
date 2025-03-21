@@ -168,10 +168,11 @@ def get_session_data(user=Depends(verify_supabase_token)):  # 🔄
     return session_info
 
 
-if __name__ == "__main__":
-    import uvicorn
-    import os
+import uvicorn
+import os
 
-    port = int(os.environ.get("PORT", 8000))  # Use Render's provided PORT
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))  # Use Render's PORT variable
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
