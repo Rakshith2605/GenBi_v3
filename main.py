@@ -7,7 +7,11 @@ import pandas as pd
 import numpy as np
 import os
 from io import BytesIO
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
+# ✅ Then import auth and everything else
 from auth import verify_supabase_token
 import session_manager
 

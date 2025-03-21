@@ -1,30 +1,18 @@
+import jwt
 import os
-import psycopg2
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
-print("🔍 Checking Environment Variables...")
-print(f"POSTGRES_USER: {os.getenv('POSTGRES_USER')}")
-print(f"POSTGRES_PASSWORD: {os.getenv('POSTGRES_PASSWORD')}")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+token = "eyJhbGciOiJIUzI1NiIsImtpZCI6Ii96TkZDTHRBWHFLTSt3QTIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3Z6eW10eGtocm90aG5mdXdvYmJzLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIyZDZkNDYwOC03ZmVhLTRjZTEtODZlYy0wYmNmNTUyMTczODMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzQyNTk0NTE3LCJpYXQiOjE3NDI1OTA5MTcsImVtYWlsIjoiZGhhcm1hcHBhLnJAbm9ydGhlYXN0ZXJuLmVkdSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJkaGFybWFwcGEuckBub3J0aGVhc3Rlcm4uZWR1IiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcnN0X25hbWUiOiJSYWtzaGl0aCIsImxhc3RfbmFtZSI6IkRoYXJtYXBwYSIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiMmQ2ZDQ2MDgtN2ZlYS00Y2UxLTg2ZWMtMGJjZjU1MjE3MzgzIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NDI1OTA5MTd9XSwic2Vzc2lvbl9pZCI6IjdmOTk0NDk0LWU4ZTMtNGY0Yy05ZmU4LTliZDEwMTM3MDg5OSIsImlzX2Fub255bW91cyI6ZmFsc2V9.R345iL6ogc9jjcl_eRdFLNDlvOaNy27qAA4DXp-nz6w"
 
 try:
-    conn = psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST"),
-        port=os.getenv("POSTGRES_PORT"),
-        database=os.getenv("POSTGRES_DATABASE"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD"),
-        sslmode="require",
-        options="-c statement_timeout=5000"
+    decoded = jwt.decode(
+        token,
+        SUPABASE_JWT_SECRET,
+        algorithms=["HS256"],
+        audience="authenticated"  # Make sure this matches "aud"
     )
-
-    cursor = conn.cursor()
-    cursor.execute("SELECT NOW();")
-    print("✅ Connected to Supabase PostgreSQL! Server time:", cursor.fetchone()[0])
-
-    cursor.close()
-    conn.close()
-except Exception as e:
-    print("❌ Connection failed:", e)
+    print("✅ Token is valid! Decoded data:", decoded)
+except jwt.ExpiredSignatureError:
+    print("❌ ERROR: Token Expired!")
+except jwt.InvalidTokenError as e:
+    print(f"❌ ERROR: Invalid Token! {e}")
