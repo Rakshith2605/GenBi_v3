@@ -5,10 +5,11 @@ from fastapi.encoders import jsonable_encoder
 
 import pandas as pd
 import numpy as np
+import os
 from io import BytesIO
 
-from auth import verify_supabase_token  # 🔄 UPDATED
-import session_manager  # TODO: 🔄 Update to work with PostgreSQL or a Supabase-compatible store
+from auth import verify_supabase_token
+import session_manager
 
 from file_processor import load_data
 from agents.classifier import classify_query
@@ -24,10 +25,10 @@ llm = ChatOpenAI(temperature=0, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KE
 
 app = FastAPI()
 
-# CORS setup
+# ✅ CORS setup for Render
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this in production!
+    allow_origins=["*"],  # Change this for production security!
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,9 +38,8 @@ app.add_middleware(
 def health_check():
     return {"status": "ok"}
 
-
-def load_data(file_bytes: BytesIO):
-    filename = file_bytes.name.lower()
+# ✅ Fixing File Upload & Debugging
+def load_data(file_bytes: BytesIO, filename: str):
     try:
         if filename.endswith('.csv'):
             return pd.read_csv(file_bytes, sep=None, engine='python')
@@ -50,9 +50,10 @@ def load_data(file_bytes: BytesIO):
         else:
             raise ValueError("Unsupported file format.")
     except Exception as e:
+        print(f"❌ Error loading file: {e}")  # Debugging line
         raise ValueError(f"Error loading file: {e}")
 
-
+# ✅ Fixing NumPy Data Types
 def convert_numpy_types(obj):
     if isinstance(obj, np.generic):
         return obj.item()
@@ -62,7 +63,7 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(element) for element in obj]
     return obj
 
-
+# ✅ Fixing Upload Route with Debugging
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase_token)):
     try:
@@ -73,7 +74,7 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
         file_bytes.name = file.filename  # Assigning a name for pandas to detect type
         
         global df
-        df = load_data(file_bytes)
+        df = load_data(file_bytes, file.filename)
 
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="Failed to process file: DataFrame is empty.")
@@ -93,10 +94,9 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
         print(f"❌ ERROR: {e}")  # Debugging line
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
+# ✅ Fix Query Processing
 @app.post("/query")
-async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)):  # 🔄
+async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)):
     if "query" not in data:
         raise HTTPException(status_code=400, detail="Missing query in request.")
 
@@ -111,12 +111,12 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     try:
         if query_type == "plot":
             manipulation_prompt = generate_data_manipulation_prompt(user_query, session["df"])
-            processed_df = process_dataframe(manipulation_prompt, df)
+            processed_df = process_dataframe(manipulation_prompt, session["df"])
             fig = create_visualization(processed_df, user_query)
             result = {"type": "plot", "content": fig.to_json()}
 
         elif query_type == "table":
-            agent = create_pandas_dataframe_agent(llm, df, verbose=True, allow_dangerous_code=True)
+            agent = create_pandas_dataframe_agent(llm, session["df"], verbose=True, allow_dangerous_code=True)
             agent_query = f"""
             {user_query}
             Provide Python code to generate a Pandas DataFrame named `result_df`.
@@ -124,7 +124,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             """
             agent_response = agent.run(agent_query)
 
-            local_vars = {'df': df}
+            local_vars = {'df': session["df"]}
             try:
                 exec(agent_response, {}, local_vars)
                 result_df = local_vars.get('result_df', pd.DataFrame({"Result": ["No data generated."]}))
@@ -138,7 +138,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             You are an expert data analyst working with pandas DataFrames.
             When answering the user query, please explain your reasoning in detail.
             """
-            agent = create_pandas_dataframe_agent(llm, df, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
+            agent = create_pandas_dataframe_agent(llm, session["df"], verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
             answer = agent.run(user_query)
             result = {"type": "text", "content": answer}
 
@@ -151,10 +151,10 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
+# ✅ Fix Session Retrieval
 @app.get("/session")
-def get_session_data(user=Depends(verify_supabase_token)):  # 🔄
-    user_id = user["sub"]  # 🔄 Supabase user ID
+def get_session_data(user=Depends(verify_supabase_token)):
+    user_id = user["sub"]
     session = session_manager.get_session(user_id)
 
     session_info = {
@@ -167,12 +167,10 @@ def get_session_data(user=Depends(verify_supabase_token)):  # 🔄
     }
     return session_info
 
-
+# ✅ Fix Deployment for Render
 import uvicorn
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Use Render's PORT variable
+    print(f"🚀 Starting API on port {port}...")
     uvicorn.run(app, host="0.0.0.0", port=port)
-
-
