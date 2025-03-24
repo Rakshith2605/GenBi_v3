@@ -25,7 +25,7 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_community.chat_models import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
 
-llm = ChatOpenAI(temperature=1, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
+llm = ChatOpenAI(temperature=0.5, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
 
 app = FastAPI()
 
