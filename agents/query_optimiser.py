@@ -35,7 +35,8 @@ def expand_query_with_chain_of_thought(user_query, df, buffer_memory):
     'followup': 'follow-up question here'
     9. Ensure the expanded query includes one clear and actionable task (not phrased as a question or option).
     10. Try to start question with 'Wh' form for general question and 'Generate' for plot and tables
-    11. Return a refined and precise version of the query that helps the agent respond accurately.
+    11. Your question should always be data-oriented and structured. Frame it using data operations such as groupby, count, sort, filter, or aggregate, similar to how a data analyst would pose a precise analytical task. Avoid vague or conversational language — the question should reflect a clear data manipulation or insight objective.11. Return a refined and precise version of the query that helps the agent respond accurately.
+    12. Return a refined and precise version of the query that helps the agent respond accurately.
 
     Expanded query:
     """
