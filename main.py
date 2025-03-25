@@ -2,7 +2,8 @@ from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-
+import pandas as pd
+import traceback
 import pandas as pd
 import numpy as np
 import os
@@ -120,40 +121,47 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             fig = create_visualization(processed_df, user_query)
             result = {"type": "plot", "content": fig.to_json()}
 
+
+
         elif query_type == "table":
             try:
                 # Create the agent
                 agent = create_pandas_dataframe_agent(
-                    llm, df, verbose=True, allow_dangerous_code=True
+                    llm, df, verbose=False, allow_dangerous_code=True
                 )
 
-                # Create the minimal, clear prompt
+                # Prompt for clean Python code
                 agent_prompt = (
-                    f"{user_query}\n"
-                    "Return only Python code that defines a DataFrame named `result_df`."
+                    f"{user_query.strip()}\n"
+                    "Return only valid Python code that defines a DataFrame named `result_df`. "
+                    "Do not include comments, markdown, or explanation."
                 )
 
-                # Run the agent to get the code
-                generated_code = agent.run(agent_prompt)
-                print("📦 Generated code:\n", generated_code)  # Optional debug log
+                # Run the agent and get the generated code
+                generated_code = agent.run(agent_prompt).strip()
+                print("📦 Generated Code:\n", generated_code)
 
-                # Execute the code safely
-                exec_env = {'df': df}
+                # Sanity check: remove accidental markdown or explanations
+                if "```" in generated_code:
+                    generated_code = generated_code.split("```")[1] if "python" in generated_code else generated_code.replace("```", "")
+
+                # Prepare execution environment
+                exec_env = {'df': df, 'pd': pd}
                 exec(generated_code, {}, exec_env)
 
-                result_df = exec_env.get('result_df')
-
-                # If result_df is missing or not a DataFrame
+                # Validate result_df
+                result_df = exec_env.get("result_df")
                 if not isinstance(result_df, pd.DataFrame):
-                    raise ValueError("Generated code did not produce a valid DataFrame named `result_df`.")
+                    raise ValueError("The code did not define a valid DataFrame named `result_df`.")
 
+                # Return as dictionary
                 result = {
                     "type": "table",
                     "content": result_df.to_dict(orient="records")
                 }
 
             except Exception as e:
-                print(f"❌ Error executing agent code: {e}")
+                print("❌ Error executing agent code:\n", traceback.format_exc())
                 result = {
                     "type": "table",
                     "content": pd.DataFrame({"Error": [str(e)]}).to_dict(orient="records")
