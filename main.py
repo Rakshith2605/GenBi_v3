@@ -28,7 +28,7 @@ from langchain_community.chat_models import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
 from langchain.memory import ConversationBufferMemory
 
-llm = ChatOpenAI(temperature=0.5, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
+llm = ChatOpenAI(temperature=0.9, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
 
 app = FastAPI()
 
