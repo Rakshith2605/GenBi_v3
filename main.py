@@ -26,6 +26,7 @@ from agents.table_generator import get_df
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_community.chat_models import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
+from langchain.memory import ConversationBufferMemory
 
 llm = ChatOpenAI(temperature=0.5, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
 
@@ -58,6 +59,10 @@ def load_data(file_bytes: BytesIO, filename: str):
     except Exception as e:
         print(f"❌ Error loading file: {e}")  # Debugging line
         raise ValueError(f"Error loading file: {e}")
+
+
+memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
 
 # ✅ Fixing NumPy Data Types
 def convert_numpy_types(obj):
@@ -113,7 +118,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
 
     #if not session or "df" not in session or session["df"] is None:
         #raise HTTPException(status_code=400, detail="No dataset uploaded.")
-    optimised_query = expand_query_with_chain_of_thought(user_query,df,[])
+    optimised_query = expand_query_with_chain_of_thought(user_query,df,memory)
     query_type = classify_query(optimised_query)
     try:
         if query_type == "plot":
@@ -128,7 +133,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             try:
                 # Create the agent
                 agent = create_pandas_dataframe_agent(
-                    llm, df, verbose=False, allow_dangerous_code=True
+                    llm, df,memory=memory, verbose=False, allow_dangerous_code=True
                 )
 
                 # Prompt for clean Python code
@@ -174,7 +179,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             You are an expert data analyst working with pandas DataFrames.
             When answering the user query, please explain your reasoning in detail.
             """
-            agent = create_pandas_dataframe_agent(llm, df, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
+            agent = create_pandas_dataframe_agent(llm, df,memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
             answer = agent.run(user_query)
             result = {"type": "text", "content": answer}
 

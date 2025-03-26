@@ -66,3 +66,14 @@ twilio>=9.4.6
 # HTML Parsing (if needed)
 trafilatura>=2.0.0
 supabase
+
+langchain>=0.2.0
+langchain-core>=0.1.35
+langchain-openai>=0.1.1
+openai>=1.0.0
+pandas>=1.3.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-dotenv
+ipython
+
