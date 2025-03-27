@@ -24,7 +24,7 @@ from agents.query_optimiser import expand_query_with_chain_of_thought
 from utils.data_processor import process_dataframe
 from agents.table_generator import get_df
 from langchain_experimental.agents import create_pandas_dataframe_agent
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
 from langchain.memory import ConversationBufferMemory
 
@@ -61,8 +61,7 @@ def load_data(file_bytes: BytesIO, filename: str):
         raise ValueError(f"Error loading file: {e}")
 
 
-memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-
+memory = ConversationBufferMemory()
 
 # ✅ Fixing NumPy Data Types
 def convert_numpy_types(obj):
@@ -122,9 +121,10 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     query_type = classify_query(optimised_query)
     try:
         if query_type == "plot":
-            manipulation_prompt = generate_data_manipulation_prompt(user_query, df)
+            manipulation_prompt = generate_data_manipulation_prompt(optimised_query, df)
             processed_df = process_dataframe(manipulation_prompt, df)
             fig = create_visualization(processed_df, user_query)
+            memory.save_context({"input": user_query}, {"output": fig})
             result = {"type": "plot", "content": fig.to_json()}
 
 
@@ -161,6 +161,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                     raise ValueError("The code did not define a valid DataFrame named `result_df`.")
 
                 # Return as dictionary
+                memory.save_context({"input": user_query}, {"output": result_df})
                 result = {
                     "type": "table",
                     "content": result_df.to_dict(orient="records")
@@ -181,6 +182,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             """
             agent = create_pandas_dataframe_agent(llm, df,memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
             answer = agent.run(user_query)
+            memory.save_context({"input": user_query}, {"output": answer})
             result = {"type": "text", "content": answer}
 
         #session.setdefault("queries", []).append(user_query)

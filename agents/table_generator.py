@@ -1,7 +1,7 @@
 from pandasai import SmartDataframe
 from pandasai.llm import OpenAI
 from dotenv import load_dotenv
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 import os
 from pathlib import Path
 
