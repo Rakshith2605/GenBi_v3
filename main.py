@@ -118,6 +118,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     #if not session or "df" not in session or session["df"] is None:
         #raise HTTPException(status_code=400, detail="No dataset uploaded.")
     optimised_query = expand_query_with_chain_of_thought(user_query,df,memory)
+    print(optimised_query)
     query_type = classify_query(optimised_query)
     try:
         if query_type == "plot":
