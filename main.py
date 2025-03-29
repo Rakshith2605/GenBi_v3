@@ -113,17 +113,28 @@ import json
 async def demo_session(user=Depends(verify_supabase_token)):
     global df
     df = sns.load_dataset('titanic')
-    print(df.head())
-
-    # Serialize safely to JSON, then parse back into Python dict
-    safe_data = json.loads(df.head(10).to_json(orient="records"))
-
+    
+    # Identify categorical columns
+    cat_columns = df.select_dtypes(include=['category']).columns
+    
+    # Add "NA" as a category to all categorical columns before filling
+    for col in cat_columns:
+        df[col] = df[col].cat.add_categories("NA")
+    
+    # Now you can safely fill NaN values
+    df = df.fillna("NA")
+    
+    # Convert to dict for JSON response
+    df_json = df.head(10).to_dict(orient="records")
+    
     return {
-        "message": "Demo data loaded successfully.",
-        "columns": list(df.columns),
-        "rows": len(df),
-        "df": safe_data
-    }
+            "message": "File uploaded successfully.",
+            "columns": list(df.columns),
+            "rows": len(df),
+            "df": df_json
+        }
+
+
 
 
 
