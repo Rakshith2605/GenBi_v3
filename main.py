@@ -112,7 +112,7 @@ import json
 @app.post("/demo")
 async def demo_session(user=Depends(verify_supabase_token)):
     global df
-    df = sns.load_dataset('titanic')
+    df = sns.load_dataset('tips')
     
     # Identify categorical columns
     cat_columns = df.select_dtypes(include=['category']).columns
