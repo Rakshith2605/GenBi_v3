@@ -10,12 +10,14 @@ import os
 from io import BytesIO
 import os
 from dotenv import load_dotenv
+import seaborn as sns
+import pandas as pd
 load_dotenv()
 
 # ✅ Then import auth and everything else
 from auth import verify_supabase_token
 import session_manager
-
+from fastapi import Depends
 from file_processor import load_data
 from agents.classifier import classify_query
 from agents.prompt_generator import generate_data_manipulation_prompt
@@ -103,6 +105,27 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
     except Exception as e:
         print(f"❌ ERROR: {e}")  # Debugging line
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+import json
+
+@app.post("/demo")
+async def demo_session(user=Depends(verify_supabase_token)):
+    global df
+    df = sns.load_dataset('titanic')
+    print(df.head())
+
+    # Serialize safely to JSON, then parse back into Python dict
+    safe_data = json.loads(df.head(10).to_json(orient="records"))
+
+    return {
+        "message": "Demo data loaded successfully.",
+        "columns": list(df.columns),
+        "rows": len(df),
+        "df": safe_data
+    }
+
+
 
 # ✅ Fix Query Processing
 @app.post("/query")
