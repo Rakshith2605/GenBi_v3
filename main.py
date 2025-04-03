@@ -146,7 +146,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                 agent = create_pandas_dataframe_agent(llm, df, memory=memory, verbose=False, allow_dangerous_code=True)
 
                 agent_prompt = (
-                    f"{user_query.strip()}\n"
+                    f"{optimised_query.strip()}\n"
                     "Return only valid Python code that defines a DataFrame named `result_df`. "
                     "Do not include comments, markdown, or explanation."
                 )
@@ -183,7 +183,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             When answering the user query, please explain your reasoning in detail.
             """
             agent = create_pandas_dataframe_agent(llm, df, memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
-            answer = agent.run(user_query)
+            answer = agent.run(optimised_query)
             memory.save_context({"input": user_query}, {"output": answer})
             result = {"type": "text", "content": answer}
 
