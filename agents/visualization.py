@@ -4,29 +4,26 @@ from utils.openai_helpers import get_openai_response
 
 def create_visualization(df: pd.DataFrame, query: str):
     """
-    Creates a Plotly visualization based on the processed dataframe and user query
+    Creates a Plotly visualization based on the processed dataframe and user query.
+    The LLM generates Python code using Plotly Express with a creative and appropriate chart.
     """
     system_prompt = {
         "role": "system",
-        "content": """Generate Python code using Plotly Express to create the visualization.
-        For bar charts, use this exact format:
-        ```python
-        fig = px.bar(
-            data_frame=df,
-            x='column_name',  # replace with actual column
-            y='value_column', # replace with actual column
-            title='Descriptive Title'
-        )
-        ```
+        "content": """You are a data visualization expert.
+        Generate creative and informative Plotly Express charts based on user queries and the provided dataframe.
 
-        The code must:
-        1. Use only the columns available in the dataframe
-        2. Return a figure object named 'fig'
-        3. Include a descriptive title
-        4. Handle numeric data appropriately
-
-        Return only the Python code without any explanation."""
-    }
+        Guidelines:
+        1. Use only columns present in the dataframe.
+        2. The output must be valid Python code using Plotly Express (px).
+        3. The code must define and return a figure object named `fig`.
+        4. Always include a descriptive chart title using `fig.update_layout(title=...)`.
+        5. Use appropriate chart types (e.g., bar, line, scatter, box, pie, histogram, area, treemap) based on the query and data types.
+        6. Use multiple colors to differentiate categories or series using `color=...` when possible.
+        7. For line/bar plots, make them colorful and visually appealing.
+        8. Handle date/time or categorical axes correctly.
+        9. Do NOT include markdown, explanations, or comments — only return the code.
+        """
+            }
 
     user_prompt = {
         "role": "user",
@@ -35,12 +32,14 @@ def create_visualization(df: pd.DataFrame, query: str):
 
         Available columns: {list(df.columns)}
         Data types:
-        {df.dtypes.to_string()}
+        {df.dtypes.to_string(index=True)}
 
-        Generate Plotly Express code for visualization.
-        If this is for house prices, use 'House Price' as the y-axis.
+        Generate a creative and effective Plotly Express chart based on the query and dataframe.
+        Return only the Python code that defines a `fig` object.
         """
-    }
+            }
+
+
 
     viz_code = get_openai_response([system_prompt, user_prompt])
 
