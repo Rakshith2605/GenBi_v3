@@ -9,14 +9,25 @@ def create_visualization(df: pd.DataFrame, query: str):
     system_prompt = {
         "role": "system",
         "content": """Generate Python code using Plotly Express to create the visualization.
-        
+        For bar charts, use this exact format:
+        ```python
+        fig = px.bar(
+            data_frame=df,
+            x='column_name',  # replace with actual column
+            y='value_column', # replace with actual column
+            title='Descriptive Title'
+        )
+        ```
+
         The code must:
         1. Use only the columns available in the dataframe
         2. Return a figure object named 'fig'
         3. Include a descriptive title
         4. Handle numeric data appropriately
-        5. Use multiple colors to differentiate categories or series using `color=...` when possible.
-        6. For line/bar plots, make them colorful and visually appealing.
+        5. For line/bar plots, make them colorful and visually appealing.
+        6. Use multiple colors to differentiate categories or series using `color=...` when possible.
+
+
 
         Return only the Python code without any explanation."""
     }
