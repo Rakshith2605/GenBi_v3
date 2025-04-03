@@ -144,8 +144,10 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
         elif query_type == "table":
             try:
                 agent = create_pandas_dataframe_agent(
-                    llm, df, memory=memory, verbose=False, allow_dangerous_code=True
+                    llm, df, memory=memory, verbose=False, allow_dangerous_code=True,
+                    handle_parsing_errors=True
                 )
+
 
                 agent_prompt = (
                     f"{optimised_query.strip()}\n"
