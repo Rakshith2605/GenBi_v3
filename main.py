@@ -143,7 +143,9 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
 
         elif query_type == "table":
             try:
-                agent = create_pandas_dataframe_agent(llm, df, memory=memory, verbose=False, allow_dangerous_code=True)
+                agent = create_pandas_dataframe_agent(
+                    llm, df, memory=memory, verbose=False, allow_dangerous_code=True
+                )
 
                 agent_prompt = (
                     f"{optimised_query.strip()}\n"
@@ -154,9 +156,13 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                 generated_code = agent.run(agent_prompt).strip()
                 print("📦 Generated Code:\n", generated_code)
 
+                # Clean accidental markdown
                 if "```" in generated_code:
-                    generated_code = generated_code.split("```")[1] if "python" in generated_code else generated_code.replace("```", "")
+                    if "python" in generated_code:
+                        generated_code = generated_code.split("```")[1]
+                    generated_code = generated_code.replace("```", "")
 
+                # Execute generated code
                 exec_env = {'df': df, 'pd': pd}
                 exec(generated_code, {}, exec_env)
 
@@ -164,7 +170,11 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                 if not isinstance(result_df, pd.DataFrame):
                     raise ValueError("The code did not define a valid DataFrame named `result_df`.")
 
-                memory.save_context({"input": optimised_query}, {"output": result_df.head(2).to_dict()})
+                # ✅ Save a short string summary to memory (avoid dict error)
+                memory_output = result_df.head(2).to_string(index=False)
+                memory.save_context({"input": optimised_query}, {"output": memory_output})
+
+                # ✅ Send full table to frontend
                 result = {
                     "type": "table",
                     "content": result_df.to_dict(orient="records")
@@ -176,6 +186,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                     "type": "table",
                     "content": pd.DataFrame({"Error": [str(e)]}).to_dict(orient="records")
                 }
+
 
         else:
             detailed_prompt = """
