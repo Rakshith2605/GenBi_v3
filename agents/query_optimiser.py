@@ -40,7 +40,7 @@ Guidelines:
 1. If the query is irrelevant to the DataFrame columns, return: "Query is not relevant to the data".
 2. If context is missing, use previous questions from history to infer intent.
 3. Identify the user's intent and relevant columns.
-4. Use a precise, analytical style. Begin with 'Wh' for questions or 'Generate' for charts/tables.
+4. Use a precise, analytical style. Begin with 'Wh' for questions or 'Generate' for charts/tables. and for barplots/hoistogram or line charts always ask to represnt them in different colors
 5. Avoid casual tone, markdown, or emojis.
 
 🔁 Rephrased question:
