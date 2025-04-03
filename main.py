@@ -156,21 +156,22 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                 generated_code = agent.run(agent_prompt).strip()
                 print("📦 Generated Code:\n", generated_code)
 
-                # Clean accidental markdown
+                # ✅ Clean accidental markdown/code fences
                 if "```" in generated_code:
-                    if "python" in generated_code:
-                        generated_code = generated_code.split("```")[1]
-                    generated_code = generated_code.replace("```", "")
+                    generated_code = generated_code.replace("```python", "").replace("```", "").strip()
 
-                # Execute generated code
+                print("🧪 Cleaned Code to Execute:\n", generated_code)
+
+                # ✅ Execute safely
                 exec_env = {'df': df, 'pd': pd}
                 exec(generated_code, {}, exec_env)
 
+                # ✅ Retrieve the result
                 result_df = exec_env.get("result_df")
                 if not isinstance(result_df, pd.DataFrame):
                     raise ValueError("The code did not define a valid DataFrame named `result_df`.")
 
-                # ✅ Save a short string summary to memory (avoid dict error)
+                # ✅ Save summary to memory
                 memory_output = result_df.head(2).to_string(index=False)
                 memory.save_context({"input": optimised_query}, {"output": memory_output})
 
@@ -186,6 +187,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                     "type": "table",
                     "content": pd.DataFrame({"Error": [str(e)]}).to_dict(orient="records")
                 }
+
 
 
         else:
