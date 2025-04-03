@@ -137,8 +137,8 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
         if query_type == "plot":
             manipulation_prompt = generate_data_manipulation_prompt(optimised_query, df)
             processed_df = process_dataframe(manipulation_prompt, df)
-            fig = create_visualization(processed_df, user_query)
-            memory.save_context({"input": user_query}, {"output": "Plot generated"})
+            fig = create_visualization(processed_df, optimised_query)
+            memory.save_context({"input": optimised_query}, {"output": "Plot generated"})
             result = {"type": "plot", "content": fig.to_json()}
 
         elif query_type == "table":
@@ -164,7 +164,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                 if not isinstance(result_df, pd.DataFrame):
                     raise ValueError("The code did not define a valid DataFrame named `result_df`.")
 
-                memory.save_context({"input": user_query}, {"output": result_df.head(2).to_dict()})
+                memory.save_context({"input": optimised_query}, {"output": result_df.head(2).to_dict()})
                 result = {
                     "type": "table",
                     "content": result_df.to_dict(orient="records")
@@ -184,7 +184,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             """
             agent = create_pandas_dataframe_agent(llm, df, memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
             answer = agent.run(optimised_query)
-            memory.save_context({"input": user_query}, {"output": answer})
+            memory.save_context({"input": optimised_query}, {"output": answer})
             result = {"type": "text", "content": answer}
 
         return jsonable_encoder(convert_numpy_types(result))
