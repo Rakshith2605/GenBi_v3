@@ -11,12 +11,15 @@ def create_visualization(df: pd.DataFrame, query: str):
         "content": """Generate Python code using Plotly Express to create the visualization.
         For bar charts, use this exact format:
         ```python
-        fig = px.bar(
-            data_frame=df,
-            x='column_name',  # replace with actual column
-            y='value_column', # replace with actual column
-            title='Descriptive Title'
-        )
+            fig = px.bar(
+            data_frame=df,  # or df_grouped if you aggregate
+            x='column_name',             # replace with your x-axis column (e.g., 'day')
+            y='value_column',            # replace with your y-axis column (e.g., 'total_bill')
+            color='group_column',        # optional: replace with column for color grouping (e.g., 'sex')
+            barmode='stack',             # can also be 'group' for side-by-side bars
+            title='Descriptive Title',   # update title
+            labels={'column_name': 'X Axis Label', 'value_column': 'Y Axis Label'}  # optional axis labels
+        )  
         ```
 
         The code must:
