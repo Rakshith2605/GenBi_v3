@@ -9,7 +9,7 @@ def create_visualization(df: pd.DataFrame, query: str):
     system_prompt = {
         "role": "system",
         "content": """Generate Python code using Plotly Express to create the visualization.
-        For bar charts, use this exact format:
+        Example: For bar charts, use this format:
         ```python
             fig = px.bar(
             data_frame=df,
@@ -18,6 +18,12 @@ def create_visualization(df: pd.DataFrame, query: str):
             title='Descriptive Title'
         )
         ```
+        Guidelines for barchart:
+        - First, aggregate the data using groupby and sum or mean.
+        - Plot one solid bar per group.
+        - Use `color` to differentiate each bar.
+        - Do not plot individual rows.
+        - Return only the Python code that defines and returns a `fig` object.
 
         The code must:
         1. Use only the columns available in the dataframe
