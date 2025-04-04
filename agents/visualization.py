@@ -29,6 +29,8 @@ def create_visualization(df: pd.DataFrame, query: str):
         4. Handle numeric data appropriately
         5. For line/bar plots, make them colorful and visually appealing.
         6. Use multiple colors to differentiate categories or series using `color=...` when possible.
+        7. Use `barmode='stack'` or `'group'` where relevant, but only with aggregated values.
+
 
 
 
