@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import seaborn as sns
 import json
 import plotly.express as px
-
+import traceback
 from auth import verify_supabase_token
 import session_manager
 from file_processor import load_data
@@ -133,42 +133,49 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     optimised_query = expand_query_with_chain_of_thought(user_query, df, memory)
     print(f"🧠 Optimized Query: {optimised_query}")
     query_type = classify_query(optimised_query)
-
-    try:
-        
-        if query_type == "plot":
-            
-            '''
+    
+    '''
             manipulation_prompt = generate_data_manipulation_prompt(optimised_query, df)
             processed_df = process_dataframe(manipulation_prompt, df)
             fig = create_visualization(processed_df, optimised_query)
             memory.save_context({"input": optimised_query}, {"output": "Plot generated"})
             result = {"type": "plot", "content": fig.to_json()}
             '''
-            
+
+    try:
+
+        if query_type == "plot":
             try:
+                # ✅ Create agent
                 agent = create_pandas_dataframe_agent(
-                    llm, df, memory=memory, verbose=False, allow_dangerous_code=True,
+                    llm,
+                    df,
+                    memory=memory,
+                    verbose=False,
+                    allow_dangerous_code=True,
                     handle_parsing_errors=True
                 )
 
+                # ✅ Dynamically generate the prompt based on user query
                 agent_prompt = (
                     f"{optimised_query.strip()}\n"
-                    "Return only valid Python code using Plotly Express that defines and returns a figure object named `fig`. "
-                    "Do not include imports, comments, markdown, or explanation. "
-                    "Assume `plotly.express as px` is already imported. "
-                    "Use only the columns available in the DataFrame `df`. "
-                    "The plot must be meaningful, colorful, and aggregated if needed (e.g., using `groupby` and `agg`)."
+                    "Return only valid, executable Python code using Plotly Express that defines and returns a figure object named `fig`.\n"
+                    "Do not include imports, markdown, explanations, or tool responses like `Thought:` or `Action:`.\n"
+                    "Assume `plotly.express as px` is already imported. Use only the columns from the DataFrame `df`.\n"
+                    "Use the chart type that makes the most sense based on the query (e.g. bar, pie, line, scatter, histogram).\n"
+                    "If needed, aggregate the data using groupby and use color to differentiate categories.\n"
+                    "Return only the code, no text or markdown formatting."
                 )
 
+                # ✅ Run the agent
                 generated_code = agent.run(agent_prompt).strip()
                 print("📦 Generated Plotly Code:\n", generated_code)
 
-                # ✅ Clean accidental markdown/code fences
+                # ✅ Clean markdown/code fences
                 if "```" in generated_code:
                     generated_code = generated_code.replace("```python", "").replace("```", "").strip()
 
-                # ✅ Strip any import lines just in case
+                # ✅ Remove import lines just in case
                 generated_code = "\n".join(
                     line for line in generated_code.splitlines()
                     if not line.strip().startswith("import")
@@ -176,27 +183,25 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
 
                 print("🧪 Cleaned Code to Execute:\n", generated_code)
 
-                # ✅ Safe execution with Plotly context
+                # ✅ Execute the generated code safely
                 exec_env = {'df': df, 'pd': pd, 'px': px}
                 exec(generated_code, {}, exec_env)
 
-                # ✅ Get the figure
                 fig = exec_env.get("fig")
                 if fig is None:
                     raise ValueError("The code did not define a valid Plotly figure named `fig`.")
 
-                # ✅ Save summary to memory
+                # ✅ Save memory output
                 memory_output = f"Generated a visualization with Plotly. Query: {optimised_query}"
                 memory.save_context({"input": optimised_query}, {"output": memory_output})
 
-                # ✅ Return Plotly JSON to frontend
+                # ✅ Return Plotly JSON
                 result = {
                     "type": "visualization",
                     "content": fig.to_json()
                 }
 
             except Exception as e:
-                import traceback
                 print("❌ Error executing plot code:\n", traceback.format_exc())
                 result = {
                     "type": "error",
