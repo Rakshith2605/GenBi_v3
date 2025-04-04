@@ -101,7 +101,7 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
 @app.post("/demo")
 async def demo_session(user=Depends(verify_supabase_token)):
     global df
-    df = sns.load_dataset('tips')
+    df = pd.read_csv("supermarket_sales.csv")
 
     cat_columns = df.select_dtypes(include=['category']).columns
     for col in cat_columns:
