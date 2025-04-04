@@ -133,14 +133,6 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     optimised_query = expand_query_with_chain_of_thought(user_query, df, memory)
     print(f"🧠 Optimized Query: {optimised_query}")
     query_type = classify_query(optimised_query)
-    
-    '''
-            manipulation_prompt = generate_data_manipulation_prompt(optimised_query, df)
-            processed_df = process_dataframe(manipulation_prompt, df)
-            fig = create_visualization(processed_df, optimised_query)
-            memory.save_context({"input": optimised_query}, {"output": "Plot generated"})
-            result = {"type": "plot", "content": fig.to_json()}
-            '''
 
     try:
 
@@ -206,6 +198,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             detailed_prompt = """
             You are an expert data analyst working with pandas DataFrames.
             When answering the user query, please explain your reasoning in detail.
+            Always try to support your answer with numerical value, comparision and with proper reasoning.
             """
             agent = create_pandas_dataframe_agent(llm, df, memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
             answer = agent.run(optimised_query)
