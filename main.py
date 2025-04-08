@@ -20,7 +20,7 @@ from agents.prompt_generator import generate_data_manipulation_prompt
 from agents.visualization import create_visualization
 from agents.query_optimiser import expand_query_with_chain_of_thought
 from utils.data_processor import process_dataframe
-from agents.table_generator import get_df
+from agents.table_generator import get_df, generate_table
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_openai import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
@@ -145,40 +145,12 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             
         elif query_type == "table":
             try:
-                agent = create_pandas_dataframe_agent(
-                    llm, df, memory=memory, verbose=False, allow_dangerous_code=True,
-                    handle_parsing_errors=True
-                )
-
-
-                agent_prompt = (
-                    f"{optimised_query.strip()}\n"
-                    "Return only valid Python code that defines a DataFrame named `result_df`. "
-                    "Do not include comments, markdown, or explanation."
-                )
-
-                generated_code = agent.run(agent_prompt).strip()
-                print("📦 Generated Code:\n", generated_code)
-
-                # ✅ Clean accidental markdown/code fences
-                if "```" in generated_code:
-                    generated_code = generated_code.replace("```python", "").replace("```", "").strip()
-
-                print("🧪 Cleaned Code to Execute:\n", generated_code)
-
-                # ✅ Execute safely
-                exec_env = {'df': df, 'pd': pd}
-                exec(generated_code, {}, exec_env)
-
-                # ✅ Retrieve the result
-                result_df = exec_env.get("result_df")
+                result_df = generate_table(df, memory, optimised_query)
                 if not isinstance(result_df, pd.DataFrame):
                     raise ValueError("The code did not define a valid DataFrame named `result_df`.")
-
                 # ✅ Save summary to memory
                 memory_output = result_df.head(2).to_string(index=False)
                 memory.save_context({"input": optimised_query}, {"output": memory_output})
-
                 # ✅ Send full table to frontend
                 result = {
                     "type": "table",
