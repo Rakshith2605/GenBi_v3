@@ -1,6 +1,21 @@
 import pandas as pd
 import plotly.express as px
 from utils.openai_helpers import get_openai_response
+from pandasai import SmartDataframe
+from pandasai.llm import OpenAI
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+import os
+from pathlib import Path
+from langchain_experimental.agents import create_pandas_dataframe_agent
+import pandas as pd
+
+api_key=os.getenv("OPENAI_API_KEY")
+llm = ChatOpenAI(
+    api_key=api_key,
+    temperature=0,
+    model_name="gpt-4"
+)
 
 def create_visualization(df: pd.DataFrame, query: str):
     """
@@ -83,3 +98,39 @@ def create_visualization(df: pd.DataFrame, query: str):
         return fig
     except Exception as e:
         raise Exception(f"Error creating visualization: {str(e)}\nCode attempted:\n{viz_code}")
+    
+    
+
+def generate_plotly_chart(df,memory, optimised_query):
+    agent = create_pandas_dataframe_agent(
+        llm, df,memory=memory, verbose=False, allow_dangerous_code=True,
+        handle_parsing_errors=True
+    )
+
+    agent_prompt = (
+        f"{optimised_query.strip()}\n"
+        "Use only Plotly Express (px) or Plotly Graph Objects (go) to create the chart.\n"
+        "Assume `df` is already available. Do not redefine it.\n"
+        "Return only valid Python code that defines a figure named `fig` and displays it using `.show()`.\n"
+        "Do not include comments, markdown, or explanation."
+    )
+
+    generated_code = agent.run(agent_prompt).strip()
+    print("🎨 Generated Plotly Code:\n", generated_code)
+
+    # ✅ Clean accidental markdown/code fences
+    if "```" in generated_code:
+        generated_code = generated_code.replace("```python", "").replace("```", "").strip()
+
+    print("🧪 Cleaned Code to Execute:\n", generated_code)
+
+    # ✅ Execute safely
+    import plotly.express as px
+    import plotly.graph_objects as go
+
+    exec_env = {'df': df, 'px': px, 'go': go}
+    exec(generated_code, {}, exec_env)
+
+    # ✅ Return the figure object
+    fig = exec_env.get("fig")
+    return fig

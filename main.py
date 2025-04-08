@@ -17,7 +17,7 @@ import session_manager
 from file_processor import load_data
 from agents.classifier import classify_query
 from agents.prompt_generator import generate_data_manipulation_prompt
-from agents.visualization import create_visualization
+from agents.visualization import create_visualization, generate_plotly_chart
 from agents.query_optimiser import expand_query_with_chain_of_thought
 from utils.data_processor import process_dataframe
 from agents.table_generator import get_df, generate_table
@@ -137,9 +137,10 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     try:
 
         if query_type == "plot":
-            manipulation_prompt = generate_data_manipulation_prompt(optimised_query, df)
-            processed_df = process_dataframe(manipulation_prompt, df)
-            fig = create_visualization(processed_df, optimised_query)
+            #manipulation_prompt = generate_data_manipulation_prompt(optimised_query, df)
+            #processed_df = process_dataframe(manipulation_prompt, df)
+            #fig = create_visualization(processed_df, optimised_query)
+            fig = generate_plotly_chart(df, memory, optimised_query)
             memory.save_context({"input": optimised_query}, {"output": "Plot generated"})
             result = {"type": "plot", "content": fig.to_json()}
             
