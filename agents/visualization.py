@@ -101,9 +101,13 @@ def create_visualization(df: pd.DataFrame, query: str):
     
     
 
-def generate_plotly_chart(df,memory, optimised_query):
+def generate_plotly_chart(df, memory, optimised_query):
+    from plotly.subplots import make_subplots
+    import plotly.express as px
+    import plotly.graph_objects as go
+
     agent = create_pandas_dataframe_agent(
-        llm, df,memory=memory, verbose=False, allow_dangerous_code=True,
+        llm, df, memory=memory, verbose=False, allow_dangerous_code=True,
         handle_parsing_errors=True
     )
 
@@ -116,21 +120,48 @@ def generate_plotly_chart(df,memory, optimised_query):
     )
 
     generated_code = agent.run(agent_prompt).strip()
-    print("🎨 Generated Plotly Code:\n", generated_code)
 
-    # ✅ Clean accidental markdown/code fences
+    # Clean up accidental markdown/code fences
     if "```" in generated_code:
         generated_code = generated_code.replace("```python", "").replace("```", "").strip()
 
-    print("🧪 Cleaned Code to Execute:\n", generated_code)
-
-    # ✅ Execute safely
-    import plotly.express as px
-    import plotly.graph_objects as go
+    print("🧪 Generated Code:\n", generated_code)
 
     exec_env = {'df': df, 'px': px, 'go': go}
     exec(generated_code, {}, exec_env)
-
-    # ✅ Return the figure object
     fig = exec_env.get("fig")
+
+    # ⬇️ Add custom controls here (dropdowns, sliders, etc.)
+    fig.update_layout(
+        title="Enhanced Plot with Interactive Controls",
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1, label="1m", step="month", stepmode="backward"),
+                    dict(count=6, label="6m", step="month", stepmode="backward"),
+                    dict(step="all")
+                ])
+            ),
+            rangeslider=dict(visible=True),
+            type="date" if 'date' in df.columns[0].lower() else "linear"
+        ),
+        updatemenus=[
+            dict(
+                type="dropdown",
+                showactive=True,
+                buttons=[
+                    dict(label="Line", method="update", args=[{"type": "scatter", "mode": "lines"}]),
+                    dict(label="Markers", method="update", args=[{"type": "scatter", "mode": "markers"}]),
+                    dict(label="Bar", method="update", args=[{"type": "bar"}])
+                ],
+                direction="down",
+                x=0.0,
+                xanchor="left",
+                y=1.1,
+                yanchor="top"
+            )
+        ]
+    )
+
+    fig.show()
     return fig
