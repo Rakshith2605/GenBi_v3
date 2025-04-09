@@ -102,9 +102,9 @@ def create_visualization(df: pd.DataFrame, query: str):
     
 
 def generate_plotly_chart(df, memory, optimised_query):
-    from plotly.subplots import make_subplots
     import plotly.express as px
     import plotly.graph_objects as go
+    import pandas as pd
 
     agent = create_pandas_dataframe_agent(
         llm, df, memory=memory, verbose=False, allow_dangerous_code=True,
@@ -121,47 +121,58 @@ def generate_plotly_chart(df, memory, optimised_query):
 
     generated_code = agent.run(agent_prompt).strip()
 
-    # Clean up accidental markdown/code fences
     if "```" in generated_code:
         generated_code = generated_code.replace("```python", "").replace("```", "").strip()
 
     print("🧪 Generated Code:\n", generated_code)
 
+    # Execute safely
     exec_env = {'df': df, 'px': px, 'go': go}
     exec(generated_code, {}, exec_env)
+
     fig = exec_env.get("fig")
 
-    # ⬇️ Add custom controls here (dropdowns, sliders, etc.)
-    fig.update_layout(
-        title="Enhanced Plot with Interactive Controls",
-        xaxis=dict(
-            rangeselector=dict(
-                buttons=list([
-                    dict(count=1, label="1m", step="month", stepmode="backward"),
-                    dict(count=6, label="6m", step="month", stepmode="backward"),
-                    dict(step="all")
-                ])
-            ),
-            rangeslider=dict(visible=True),
-            type="date" if 'date' in df.columns[0].lower() else "linear"
+    # ✅ Visual Enhancements (Polishing)
+    fig.update_traces(
+        marker=dict(
+            color='rgba(99, 110, 250, 0.8)',
+            line=dict(width=1, color='darkslategray')
         ),
-        updatemenus=[
-            dict(
-                type="dropdown",
-                showactive=True,
-                buttons=[
-                    dict(label="Line", method="update", args=[{"type": "scatter", "mode": "lines"}]),
-                    dict(label="Markers", method="update", args=[{"type": "scatter", "mode": "markers"}]),
-                    dict(label="Bar", method="update", args=[{"type": "bar"}])
-                ],
-                direction="down",
-                x=0.0,
-                xanchor="left",
-                y=1.1,
-                yanchor="top"
-            )
-        ]
+        selector=dict(mode='markers')  # Will only apply if markers exist
     )
+
+    fig.update_layout(
+        title=dict(
+            text="Enhanced Plot with Interactive Controls",
+            font=dict(size=20, family='Arial', color='darkblue'),
+            x=0.5,
+            xanchor='center'
+        ),
+        font=dict(family='Arial', size=14, color='black'),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        xaxis=dict(
+            tickangle=-45,
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='lightgrey',
+            zeroline=False
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='lightgrey',
+            zeroline=False
+        ),
+        margin=dict(l=40, r=40, t=60, b=80),
+        hovermode="closest"
+    )
+
+    # ✅ Add Axis Scaling
+    if pd.api.types.is_numeric_dtype(df[df.columns[0]]) or df[df.columns[0]].nunique() > 10:
+        fig.update_xaxes(tickmode='auto', nticks=10)
+
+    fig.update_yaxes(tickformat=",")  # Comma separators for large numbers
 
     fig.show()
     return fig
