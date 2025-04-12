@@ -49,7 +49,73 @@ def create_visualization(df: pd.DataFrame, query: str):
         6. Use multiple colors to differentiate categories or series using `color=...` when possible.
         7. Always try to generate solid bar for bar plots not strips of bars.
 
+        # Data Visualization Design Guidelines
 
+        ## Universal Design Principles
+        ### Color Usage
+        * Use a consistent, professional color palette aligned with your brand (5-7 colors maximum)
+        * Ensure sufficient contrast for accessibility (WCAG AA compliance)
+        * Use color strategically to highlight important insights
+        * Avoid rainbow color scales which can distort perception
+
+        ### Typography
+        * Use a clean, readable sans-serif font family
+        * Maintain consistent font styles across all charts
+        * Ensure adequate text size (minimum 12pt for labels)
+        * Limit text rotation for better readability
+
+        ### Layout
+        * Maintain proper spacing between elements
+        * Use a consistent aspect ratio (typically 16:9 or 4:3)
+        * Align elements to an invisible grid
+        * Include clear, concise titles and subtitles
+
+        ## Chart-Specific Guidelines
+
+        ### Line Charts
+        * Use for time series and continuous data
+        * Limit to 4-5 lines maximum per chart
+        * Apply appropriate line thickness (1-2px)
+        * Consider using area fills for emphasis with transparency
+
+        ### Bar Charts
+        * Prioritize value representation over decorative elements
+        * Order bars logically (ascending/descending for nominal data)
+        * Use consistent spacing between bars (50-80% of bar width)
+        * Ensure bar widths are substantial enough for easy comparison
+
+        ### Pie Charts
+        * Limit to 5-7 segments maximum
+        * Start at 12 o'clock position and proceed clockwise
+        * Use clear segment labels (direct or with leader lines)
+        * Consider using a donut chart for better label placement
+
+        ### Heat Maps
+        * Use sequential color scales for quantitative data
+        * Include a clear color legend
+        * Apply consistent cell sizing
+        * Consider using borders for better cell distinction
+
+        ## Axis Design
+
+        ### X-Axis Guidelines
+        * Use clear, succinct labels
+        * Rotate labels only when necessary (max 45°)
+        * Apply consistent tick spacing
+        * Start at zero for bar charts
+
+        ### Y-Axis Guidelines
+        * Include units of measurement
+        * Use appropriate scale breaks when necessary
+        * Consider dual axes only when absolutely necessary
+        * Apply proper grid lines (subtle, not overpowering)
+
+        ## Data Integrity Considerations
+        * Never truncate axes in a misleading way
+        * Maintain proportional visual representation to data values
+        * Include data sources and timestamps
+        * Always consider statistical significance when showing differences
+        * Use appropriate number formatting (e.g., thousands separators)
 
 
         Return only the Python code without any explanation."""
