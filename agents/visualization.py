@@ -193,6 +193,8 @@ def generate_plotly_chart(df,memory, optimised_query):
     "11. Highlight outliers and important data points\n"
     "12. Ensure sufficient color contrast (WCAG AA standard)\n"
     "13. Use value labels directly on bars when space permits\n"
+    "14. Use value labels directly on bars when space permits\n"
+    "15. Prefer Grouped bars over Stacked bars if possible, unless stacked bars is requested"
   
     "Follow these guidelines to create a professional and aesthetically pleasing visualization that effectively communicates the data. Apply the most relevant guidelines based on the chart type requested."
 )
