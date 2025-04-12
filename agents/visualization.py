@@ -171,45 +171,132 @@ def generate_plotly_chart(df, memory, optimised_query):
     import plotly.express as px
     import plotly.graph_objects as go
     import pandas as pd
-
+    import re
+    
     agent = create_pandas_dataframe_agent(
         llm, df, memory=memory, verbose=False, allow_dangerous_code=True,
         handle_parsing_errors=True
     )
-
+    
     agent_prompt = (
         f"{optimised_query.strip()}\n"
         "Use only Plotly Express (px) or Plotly Graph Objects (go) to create the chart.\n"
         "Assume `df` is already available. Do not redefine it.\n"
         "Return only valid Python code that defines a figure named `fig` and displays it using `.show()`.\n"
+        "Also set a descriptive title for the plot using fig.update_layout(title=...).\n"
         "Do not include comments, markdown, or explanation."
     )
-
+    
     generated_code = agent.run(agent_prompt).strip()
-
+    
     if "```" in generated_code:
         generated_code = generated_code.replace("```python", "").replace("```", "").strip()
-
+    
     print("🧪 Generated Code:\n", generated_code)
-
+    
     # Execute safely
-    exec_env = {'df': df, 'px': px, 'go': go}
+    exec_env = {'df': df, 'px': px, 'go': go, 'pd': pd}
     exec(generated_code, {}, exec_env)
-
+    
     fig = exec_env.get("fig")
-
-    # ✅ Visual Enhancements (Polishing)
-    fig.update_traces(
-        marker=dict(
-            color='rgba(99, 110, 250, 0.8)',
-            line=dict(width=1, color='darkslategray')
-        ),
-        selector=dict(mode='markers')  # Will only apply if markers exist
-    )
-
+    
+    if fig is None:
+        raise ValueError("The generated code did not produce a figure named 'fig'")
+    
+    # Extract chart type and generate default title if none exists
+    chart_title = "Data Visualization"
+    
+    # Check if title already exists in the figure layout
+    current_layout = getattr(fig, 'layout', None)
+    current_title = getattr(current_layout, 'title', None)
+    
+    if current_title and getattr(current_title, 'text', None):
+        # Use existing title if it's already set
+        chart_title = current_title.text
+    else:
+        # Try to generate a title based on the query
+        query_terms = optimised_query.lower()
+        
+        # Determine chart type from generated code
+        chart_type = "Chart"
+        if "histogram" in generated_code.lower():
+            chart_type = "Histogram"
+        elif "scatter" in generated_code.lower():
+            chart_type = "Scatter Plot"
+        elif "bar" in generated_code.lower():
+            chart_type = "Bar Chart"
+        elif "pie" in generated_code.lower():
+            chart_type = "Pie Chart"
+        elif "line" in generated_code.lower():
+            chart_type = "Line Chart"
+        elif "box" in generated_code.lower():
+            chart_type = "Box Plot"
+        elif "heatmap" in generated_code.lower():
+            chart_type = "Heat Map"
+        
+        # Extract key column names from code
+        columns_match = re.findall(r'df\[[\'"]([^\'"]+)[\'"]\]', generated_code)
+        columns = list(set(columns_match))  # Remove duplicates
+        
+        # Generate descriptive title
+        if columns:
+            if len(columns) == 1:
+                chart_title = f"{chart_type} of {columns[0]}"
+            elif len(columns) == 2:
+                chart_title = f"{chart_type} of {columns[0]} vs {columns[1]}"
+            else:
+                chart_title = f"{chart_type} of {', '.join(columns[:2])} and Others"
+        else:
+            # Fallback: Use words from the query
+            query_words = [w for w in query_terms.split() if len(w) > 3]
+            if query_words:
+                chart_title = f"{chart_type} for {' '.join(query_words[:3])}"
+            else:
+                chart_title = f"{chart_type} Visualization"
+    
+    # Detect chart type for appropriate styling
+    is_scatter = any('scatter' in str(trace.type).lower() for trace in fig.data)
+    is_bar = any('bar' in str(trace.type).lower() for trace in fig.data)
+    is_pie = any('pie' in str(trace.type).lower() for trace in fig.data)
+    is_line = any('line' in str(trace.type).lower() or 'scatter' in str(trace.type).lower() and hasattr(trace, 'mode') and 'lines' in trace.mode for trace in fig.data)
+    
+    # Apply appropriate styling based on chart type
+    if is_scatter:
+        for trace in fig.data:
+            if 'scatter' in str(trace.type).lower():
+                trace.marker.update(
+                    size=10,
+                    opacity=0.8,
+                    line=dict(width=1, color='darkslategray')
+                )
+                # Only set color if not already using a color mapping
+                if not trace.marker.get('color', None) or not isinstance(trace.marker.color, list):
+                    trace.marker.color = 'rgba(99, 110, 250, 0.8)'
+    
+    if is_bar:
+        for trace in fig.data:
+            if 'bar' in str(trace.type).lower():
+                # Only apply if not using a color mapping
+                if not trace.marker.get('color', None) or not isinstance(trace.marker.color, list):
+                    trace.marker.update(
+                        color='rgba(99, 110, 250, 0.8)',
+                        line=dict(width=1, color='darkslategray')
+                    )
+    
+    if is_line:
+        for trace in fig.data:
+            if 'scatter' in str(trace.type).lower() and hasattr(trace, 'mode') and 'lines' in trace.mode:
+                trace.line.update(width=2.5)
+                # If it's a single trace and doesn't have color mapping
+                if len(fig.data) == 1 and not trace.get('line', {}).get('color', None):
+                    trace.line.color = 'rgba(99, 110, 250, 0.9)'
+    
+    # Don't style pie charts - they have their own coloring
+    
+    # Layout updates - apply to all chart types
     fig.update_layout(
         title=dict(
-            text="Enhanced Plot with Interactive Controls",
+            text=chart_title,
             font=dict(size=20, family='Arial', color='darkblue'),
             x=0.5,
             xanchor='center'
@@ -217,28 +304,33 @@ def generate_plotly_chart(df, memory, optimised_query):
         font=dict(family='Arial', size=14, color='black'),
         plot_bgcolor='white',
         paper_bgcolor='white',
-        xaxis=dict(
+        margin=dict(l=40, r=40, t=60, b=80),
+        hovermode="closest"
+    )
+    
+    # Apply axis styling but skip for pie charts
+    if not is_pie:
+        fig.update_xaxes(
             tickangle=-45,
             showgrid=True,
             gridwidth=1,
             gridcolor='lightgrey',
             zeroline=False
-        ),
-        yaxis=dict(
+        )
+        
+        fig.update_yaxes(
             showgrid=True,
             gridwidth=1,
             gridcolor='lightgrey',
-            zeroline=False
-        ),
-        margin=dict(l=40, r=40, t=60, b=80),
-        hovermode="closest"
-    )
-
-    # ✅ Add Axis Scaling
-    if pd.api.types.is_numeric_dtype(df[df.columns[0]]) or df[df.columns[0]].nunique() > 10:
-        fig.update_xaxes(tickmode='auto', nticks=10)
-
-    fig.update_yaxes(tickformat=",")  # Comma separators for large numbers
-
+            zeroline=False,
+            tickformat="," if fig.layout.yaxis.type != 'category' else ""
+        )
+        
+        # Add axis scaling for numerical x-axis
+        if len(df.columns) > 0:
+            # Check if first column is numeric or has many unique values
+            if pd.api.types.is_numeric_dtype(df[df.columns[0]]) or df[df.columns[0]].nunique() > 10:
+                fig.update_xaxes(tickmode='auto', nticks=10)
+    
     fig.show()
     return fig
