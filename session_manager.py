@@ -7,35 +7,100 @@ from psycopg2.extras import RealDictCursor, Json
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import traceback
+import time
 
 # Load .env variables
 load_dotenv()
 
-# ✅ Correct Supabase API Configuration
+# Environment variables with debug output
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # Use the correct service key
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "genbidf")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# ✅ Initialize Supabase Client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+print(f"📊 Debug - SUPABASE_URL: {SUPABASE_URL}")
+print(f"📊 Debug - SUPABASE_BUCKET: {SUPABASE_BUCKET}")
+print(f"📊 Debug - DATABASE_URL: {DATABASE_URL and DATABASE_URL[:20]}...")  # Only print start of URL for security
 
-# ✅ Fix PostgreSQL Connection using DATABASE_URL
-DATABASE_URL = os.getenv("DATABASE_URL")  # Ensure DATABASE_URL is in your .env
+# Initialize Supabase Client with retry logic
+def get_supabase_client():
+    """Gets a Supabase client with retry logic."""
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            client = create_client(SUPABASE_URL, SUPABASE_KEY)
+            # Test the client with a simple operation
+            client.auth.get_session()
+            return client
+        except Exception as e:
+            print(f"⚠️ Supabase client creation failed (attempt {attempt+1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print("❌ All attempts to create Supabase client failed")
+                raise
+    
+    return None
+
+# Try to initialize Supabase client
+try:
+    supabase: Client = get_supabase_client()
+    # Check if bucket exists and create if needed
+    try:
+        buckets = supabase.storage.list_buckets()
+        bucket_exists = any(bucket.name == SUPABASE_BUCKET for bucket in buckets)
+        if not bucket_exists:
+            print(f"⚠️ Bucket '{SUPABASE_BUCKET}' not found, creating it...")
+            supabase.storage.create_bucket(SUPABASE_BUCKET, {'public': False})
+            print(f"✅ Bucket '{SUPABASE_BUCKET}' created successfully")
+        else:
+            print(f"✅ Bucket '{SUPABASE_BUCKET}' already exists")
+    except Exception as e:
+        print(f"⚠️ Error checking/creating bucket: {e}")
+except Exception as e:
+    print(f"❌ Failed to initialize Supabase client: {e}")
+    supabase = None
 
 def get_db_connection():
     """Connects to the PostgreSQL database using DATABASE_URL."""
-    try:
-        DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:YOUR-PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres")
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-        return conn
-    except Exception as e:
-        print(f"❌ ERROR: Failed to connect to database: {e}")
-        return None
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            # Ensure DATABASE_URL is set
+            if not DATABASE_URL:
+                print("❌ ERROR: DATABASE_URL environment variable is not set")
+                return None
+                
+            # Add connection timeout
+            conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor, connect_timeout=10)
+            return conn
+        except Exception as e:
+            print(f"❌ Database connection failed (attempt {attempt+1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print("❌ All database connection attempts failed")
+                traceback.print_exc()
+    
+    return None
 
 def ensure_tables_exist():
     """Makes sure all required tables exist in the database."""
+    if not supabase:
+        print("⚠️ Supabase client not initialized, skipping table creation")
+        return False
+        
     conn = get_db_connection()
     if not conn:
+        print("⚠️ Database connection failed, skipping table creation")
         return False
     
     cursor = conn.cursor()
@@ -140,46 +205,82 @@ def ensure_tables_exist():
 
 def upload_df_to_supabase(user_id: str, df: pd.DataFrame, file_name: str):
     """Uploads DataFrame as CSV to Supabase Storage and returns metadata."""
-    # Convert DataFrame to CSV in a BytesIO buffer
-    csv_buffer = BytesIO()
-    df.to_csv(csv_buffer, index=False)
-    csv_buffer.seek(0)
+    if not supabase:
+        print("⚠️ Supabase client not initialized, skipping file upload")
+        # Return metadata without storage info
+        return {
+            "storage_path": None,
+            "file_name": file_name,
+            "file_size_mb": 0,
+            "num_rows": len(df),
+            "num_columns": len(df.columns),
+            "error": "Supabase client not initialized"
+        }
     
-    # Read the content as bytes
-    file_content = csv_buffer.getvalue()
-    
-    file_path = f"{user_id}/{uuid.uuid4()}_{file_name}"
+    try:
+        # Convert DataFrame to CSV in a BytesIO buffer
+        csv_buffer = BytesIO()
+        df.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+        
+        # Read the content as bytes
+        file_content = csv_buffer.getvalue()
+        
+        file_path = f"{user_id}/{uuid.uuid4()}_{file_name}"
+        print(f"🔄 Attempting to upload to bucket: {SUPABASE_BUCKET}, path: {file_path}")
+        
+        # Upload the file
+        response = supabase.storage.from_(SUPABASE_BUCKET).upload(
+            file_path, 
+            file_content,  # Pass bytes content instead of BytesIO object
+            {"content-type": "text/csv"}
+        )
 
-    # ✅ Fixed: Upload bytes content instead of BytesIO object
-    response = supabase.storage.from_(SUPABASE_BUCKET).upload(
-        file_path, 
-        file_content,  # Pass bytes content instead of BytesIO object
-        {"content-type": "text/csv"}
-    )
+        if hasattr(response, 'error') and response.error:
+            raise Exception(f"❌ Upload failed: {response.error}")
 
-    if hasattr(response, 'error') and response.error:
-        raise Exception(f"❌ Upload failed: {response.error}")
-
-    return {
-        "storage_path": f"{SUPABASE_BUCKET}/{file_path}",
-        "file_name": file_name,
-        "file_size_mb": round(len(file_content) / (1024 * 1024), 2),
-        "num_rows": df.shape[0],
-        "num_columns": df.shape[1]
-    }
+        print(f"✅ File uploaded successfully to {SUPABASE_BUCKET}/{file_path}")
+        return {
+            "storage_path": f"{SUPABASE_BUCKET}/{file_path}",
+            "file_name": file_name,
+            "file_size_mb": round(len(file_content) / (1024 * 1024), 2),
+            "num_rows": len(df),
+            "num_columns": len(df.columns)
+        }
+    except Exception as e:
+        print(f"❌ ERROR uploading file: {e}")
+        traceback.print_exc()
+        # Return metadata without storage info
+        return {
+            "storage_path": None,
+            "file_name": file_name,
+            "file_size_mb": 0,
+            "num_rows": len(df),
+            "num_columns": len(df.columns),
+            "error": str(e)
+        }
 
 def create_dataset(user_id: str, df: pd.DataFrame, file_name: str):
     """Creates a dataset record and uploads the DataFrame to storage."""
-    # First make sure tables exist
+    # Try to create tables if needed (but continue if it fails)
     ensure_tables_exist()
     
-    # Upload file to storage
+    # Upload file to storage (might return error metadata if it fails)
     storage_info = upload_df_to_supabase(user_id, df, file_name)
     
     conn = get_db_connection()
     if not conn:
-        print("❌ ERROR: Could not connect to database")
-        return None
+        print("⚠️ Database connection failed, returning local dataset info")
+        # Return a minimal dataset structure without storing in database
+        dataset_id = str(uuid.uuid4())
+        return {
+            "dataset_id": dataset_id,
+            "name": file_name,
+            "row_count": len(df),
+            "columns": df.columns.tolist(),
+            "is_local_only": True,  # Flag to indicate not stored in DB
+            "storage_info": storage_info
+        }
         
     cursor = conn.cursor()
     try:
@@ -202,38 +303,55 @@ def create_dataset(user_id: str, df: pd.DataFrame, file_name: str):
             file_type,
             len(df),
             df.columns.tolist(),
-            storage_info["storage_path"],
+            storage_info.get("storage_path"),
             SUPABASE_BUCKET
         ))
         
         dataset_id = cursor.fetchone()["id"]
         conn.commit()
         
+        print(f"✅ Dataset created with ID: {dataset_id}")
         return {
             "dataset_id": dataset_id,
             "name": file_name,
             "row_count": len(df),
-            "columns": df.columns.tolist()
+            "columns": df.columns.tolist(),
+            "storage_info": storage_info
         }
         
     except Exception as e:
         conn.rollback()
         print(f"❌ ERROR creating dataset: {e}")
         traceback.print_exc()
-        return None
+        # Return a minimal dataset structure without storing in database
+        dataset_id = str(uuid.uuid4())
+        return {
+            "dataset_id": dataset_id,
+            "name": file_name,
+            "row_count": len(df),
+            "columns": df.columns.tolist(),
+            "is_local_only": True,  # Flag to indicate not stored in DB
+            "storage_info": storage_info,
+            "error": str(e)
+        }
     finally:
         cursor.close()
         conn.close()
 
-def create_chat_session(user_id: str, dataset_id: str, title: str = None):
+def create_chat_session(user_id: str, dataset_id: str = None, title: str = None):
     """Creates a new chat session."""
-    # First make sure tables exist
-    ensure_tables_exist()
-    
     conn = get_db_connection()
     if not conn:
-        print("❌ ERROR: Could not connect to database")
-        return None
+        print("⚠️ Database connection failed, returning local chat session info")
+        # Return a minimal chat session without storing in database
+        session_id = str(uuid.uuid4())
+        return {
+            "session_id": session_id,
+            "title": title or "New Chat",
+            "session_number": 1,
+            "is_local_only": True,  # Flag to indicate not stored in DB
+            "dataset_id": dataset_id
+        }
         
     cursor = conn.cursor()
     try:
@@ -248,11 +366,14 @@ def create_chat_session(user_id: str, dataset_id: str, title: str = None):
         
         # Use dataset name as title if not provided
         if title is None and dataset_id is not None:
-            cursor.execute("SELECT name FROM datasets WHERE id = %s", (dataset_id,))
-            dataset = cursor.fetchone()
-            if dataset:
-                title = f"Chat about {dataset['name']}"
-            else:
+            try:
+                cursor.execute("SELECT name FROM datasets WHERE id = %s", (dataset_id,))
+                dataset = cursor.fetchone()
+                if dataset:
+                    title = f"Chat about {dataset['name']}"
+                else:
+                    title = f"Chat session {next_session}"
+            except:
                 title = f"Chat session {next_session}"
         elif title is None:
             title = f"Chat session {next_session}"
@@ -275,17 +396,28 @@ def create_chat_session(user_id: str, dataset_id: str, title: str = None):
         session_id = cursor.fetchone()["id"]
         conn.commit()
         
+        print(f"✅ Chat session created with ID: {session_id}")
         return {
             "session_id": session_id,
             "title": title,
-            "session_number": next_session
+            "session_number": next_session,
+            "dataset_id": dataset_id
         }
         
     except Exception as e:
         conn.rollback()
         print(f"❌ ERROR creating chat session: {e}")
         traceback.print_exc()
-        return None
+        # Return a minimal chat session without storing in database
+        session_id = str(uuid.uuid4())
+        return {
+            "session_id": session_id,
+            "title": title or "New Chat",
+            "session_number": 1,
+            "is_local_only": True,  # Flag to indicate not stored in DB
+            "dataset_id": dataset_id,
+            "error": str(e)
+        }
     finally:
         cursor.close()
         conn.close()
@@ -294,8 +426,17 @@ def add_chat_message(session_id: str, sender: str, content, message_type: str = 
     """Adds a message to a chat session."""
     conn = get_db_connection()
     if not conn:
-        print("❌ ERROR: Could not connect to database")
-        return None
+        print("⚠️ Database connection failed, returning local message info")
+        # Return a minimal message without storing in database
+        message_id = str(uuid.uuid4())
+        return {
+            "message_id": message_id,
+            "session_id": session_id,
+            "sender": sender,
+            "content": content,
+            "type": message_type,
+            "is_local_only": True  # Flag to indicate not stored in DB
+        }
         
     cursor = conn.cursor()
     try:
@@ -332,14 +473,27 @@ def add_chat_message(session_id: str, sender: str, content, message_type: str = 
         
         return {
             "message_id": message_id,
-            "session_id": session_id
+            "session_id": session_id,
+            "sender": sender,
+            "content": content,
+            "type": message_type
         }
         
     except Exception as e:
         conn.rollback()
         print(f"❌ ERROR adding chat message: {e}")
         traceback.print_exc()
-        return None
+        # Return a minimal message without storing in database
+        message_id = str(uuid.uuid4())
+        return {
+            "message_id": message_id,
+            "session_id": session_id,
+            "sender": sender,
+            "content": content,
+            "type": message_type,
+            "is_local_only": True,  # Flag to indicate not stored in DB
+            "error": str(e)
+        }
     finally:
         cursor.close()
         conn.close()
@@ -348,7 +502,7 @@ def get_chat_session(session_id: str, with_messages: bool = True):
     """Get a chat session and optionally its messages."""
     conn = get_db_connection()
     if not conn:
-        print("❌ ERROR: Could not connect to database")
+        print("⚠️ Database connection failed, cannot retrieve chat session")
         return None
         
     cursor = conn.cursor()
@@ -399,7 +553,7 @@ def get_user_chat_sessions(user_id: str):
     """Get all chat sessions for a user."""
     conn = get_db_connection()
     if not conn:
-        print("❌ ERROR: Could not connect to database")
+        print("⚠️ Database connection failed, cannot retrieve user chat sessions")
         return []
         
     cursor = conn.cursor()
@@ -428,7 +582,7 @@ def get_user_datasets(user_id: str):
     """Get all datasets for a user."""
     conn = get_db_connection()
     if not conn:
-        print("❌ ERROR: Could not connect to database")
+        print("⚠️ Database connection failed, cannot retrieve user datasets")
         return []
         
     cursor = conn.cursor()
@@ -486,9 +640,6 @@ def get_session(user_id: str):
 
 def update_session(user_id: str, key: str, value, file_name=None):
     """Updates session with new values using the new database structure."""
-    # First make sure tables exist
-    ensure_tables_exist()
-    
     # Get existing session or create new one
     session_data = get_session(user_id)
     session_id = session_data["session_id"]
