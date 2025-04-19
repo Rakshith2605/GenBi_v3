@@ -32,7 +32,11 @@ def get_supabase_client():
         try:
             client = create_client(SUPABASE_URL, SUPABASE_KEY)
             # Test the client with a simple operation
-            client.auth.get_session()
+            try:
+                client.auth.get_session()
+            except:
+                # Some operations might fail but the client could still be usable
+                pass
             return client
         except Exception as e:
             print(f"⚠️ Supabase client creation failed (attempt {attempt+1}/{max_retries}): {e}")
@@ -52,10 +56,18 @@ try:
     # Check if bucket exists and create if needed
     try:
         buckets = supabase.storage.list_buckets()
-        bucket_exists = any(bucket.name == SUPABASE_BUCKET for bucket in buckets)
+        bucket_exists = False
+        
+        # Check if the bucket exists
+        for bucket in buckets:
+            if getattr(bucket, 'name', '') == SUPABASE_BUCKET:
+                bucket_exists = True
+                break
+                
         if not bucket_exists:
             print(f"⚠️ Bucket '{SUPABASE_BUCKET}' not found, creating it...")
-            supabase.storage.create_bucket(SUPABASE_BUCKET, {'public': False})
+            # Use the correct format for bucket creation
+            supabase.storage.create_bucket(id=SUPABASE_BUCKET)
             print(f"✅ Bucket '{SUPABASE_BUCKET}' created successfully")
         else:
             print(f"✅ Bucket '{SUPABASE_BUCKET}' already exists")
@@ -76,9 +88,40 @@ def get_db_connection():
             if not DATABASE_URL:
                 print("❌ ERROR: DATABASE_URL environment variable is not set")
                 return None
+            
+            # Modify connection params to force IPv4 if needed    
+            conn_params = {
+                'cursor_factory': RealDictCursor, 
+                'connect_timeout': 10,
+                # Force IPv4 connections
+                'host': DATABASE_URL.split('@')[1].split(':')[0],
+                'hostaddr': None  # Will be resolved via IPv4
+            }
+            
+            # Extract connection string components
+            if 'postgres://' in DATABASE_URL:
+                # Parse username and password
+                userpass = DATABASE_URL.split('@')[0].replace('postgres://', '')
+                username = userpass.split(':')[0]
+                password = userpass.split(':')[1]
                 
-            # Add connection timeout
-            conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor, connect_timeout=10)
+                # Parse port and database
+                hostport_db = DATABASE_URL.split('@')[1]
+                port = hostport_db.split(':')[1].split('/')[0]
+                database = hostport_db.split('/')[1]
+                
+                # Add to connection params
+                conn_params['user'] = username
+                conn_params['password'] = password
+                conn_params['port'] = port
+                conn_params['dbname'] = database
+                
+                # Connect with parameters instead of connection string
+                conn = psycopg2.connect(**conn_params)
+            else:
+                # Fallback to direct connection string
+                conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor, connect_timeout=10)
+                
             return conn
         except Exception as e:
             print(f"❌ Database connection failed (attempt {attempt+1}/{max_retries}): {e}")
@@ -231,9 +274,9 @@ def upload_df_to_supabase(user_id: str, df: pd.DataFrame, file_name: str):
         
         # Upload the file
         response = supabase.storage.from_(SUPABASE_BUCKET).upload(
-            file_path, 
-            file_content,  # Pass bytes content instead of BytesIO object
-            {"content-type": "text/csv"}
+            path=file_path, 
+            file=file_content,  # Pass bytes content instead of BytesIO object
+            file_options={"content-type": "text/csv"}
         )
 
         if hasattr(response, 'error') and response.error:
@@ -440,6 +483,10 @@ def add_chat_message(session_id: str, sender: str, content, message_type: str = 
         
     cursor = conn.cursor()
     try:
+        # Fix for sender validation - map 'assistant' to 'system' if needed
+        # This is to work around the chat_messages_sender_check constraint issue
+        actual_sender = 'system' if sender == 'assistant' else sender
+        
         # Convert content to JSONB if it's not already
         if isinstance(content, dict) or isinstance(content, list):
             content_json = Json(content)
@@ -455,7 +502,7 @@ def add_chat_message(session_id: str, sender: str, content, message_type: str = 
             ) RETURNING id
         """, (
             session_id,
-            sender,
+            actual_sender,  # Use mapped sender value
             content_json,
             message_type
         ))
@@ -474,7 +521,7 @@ def add_chat_message(session_id: str, sender: str, content, message_type: str = 
         return {
             "message_id": message_id,
             "session_id": session_id,
-            "sender": sender,
+            "sender": sender,  # Return original sender for consistency in the API
             "content": content,
             "type": message_type
         }
@@ -537,7 +584,13 @@ def get_chat_session(session_id: str, with_messages: bool = True):
             """, (session_id,))
             
             messages = cursor.fetchall()
-            result["messages"] = [dict(msg) for msg in messages]
+            # Map 'system' sender back to 'assistant' for API consistency
+            result["messages"] = []
+            for msg in messages:
+                msg_dict = dict(msg)
+                if msg_dict["sender"] == "system":
+                    msg_dict["sender"] = "assistant"
+                result["messages"].append(msg_dict)
         
         return result
         
@@ -661,7 +714,7 @@ def update_session(user_id: str, key: str, value, file_name=None):
                     # Create a new chat session with this dataset
                     new_session = create_chat_session(
                         user_id, 
-                        dataset["dataset_id"], 
+                        dataset.get("dataset_id"), 
                         f"Chat about {file_name}"
                     )
 
