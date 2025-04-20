@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 import traceback
 import os
+import time
+import threading
 from io import BytesIO
 from dotenv import load_dotenv
 import seaborn as sns
@@ -13,7 +15,6 @@ import json
 import plotly.express as px
 import traceback
 from auth import verify_supabase_token
-from file_processor import load_data
 from agents.classifier import classify_query
 from agents.prompt_generator import generate_data_manipulation_prompt
 from agents.visualization import create_visualization, generate_plotly_chart
@@ -29,9 +30,52 @@ load_dotenv()
 
 
 class DataFrameManager:
-    def __init__(self):
-        self.df = None
+    def __init__(self, max_idle_time=3600):  # 1 hour default timeout
+        self.user_dataframes = {}  # Dictionary to store dataframes for each user
+        self.last_access = {}  # Track when each user last accessed their data
+        self.max_idle_time = max_idle_time
         self.llm = ChatOpenAI(temperature=0.9, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
+        self._cleanup_lock = threading.Lock()
+        self._setup_cleanup_thread()
+    
+    def _setup_cleanup_thread(self):
+        """Setup a thread to periodically clean up old data"""
+        self.cleanup_thread = threading.Thread(target=self._cleanup_worker, daemon=True)
+        self.cleanup_thread.start()
+    
+    def _cleanup_worker(self):
+        """Background worker that periodically cleans up old data"""
+        while True:
+            time.sleep(600)  # Run every 10 minutes
+            with self._cleanup_lock:
+                self.cleanup_old_data()
+    
+    def get_df(self, user_id):
+        """Get the dataframe for a specific user and update access time"""
+        if user_id in self.user_dataframes:
+            self.last_access[user_id] = time.time()
+            return self.user_dataframes.get(user_id)
+        return None
+    
+    def set_df(self, user_id, df):
+        """Set the dataframe for a specific user, overwrites any existing data"""
+        self.user_dataframes[user_id] = df
+        self.last_access[user_id] = time.time()
+    
+    def cleanup_old_data(self):
+        """Remove dataframes for users who haven't accessed for max_idle_time seconds"""
+        current_time = time.time()
+        users_to_remove = []
+        
+        for user_id in list(self.last_access.keys()):
+            if current_time - self.last_access[user_id] > self.max_idle_time:
+                users_to_remove.append(user_id)
+        
+        for user_id in users_to_remove:
+            if user_id in self.user_dataframes:
+                print(f"🧹 Cleaning up data for inactive user: {user_id}")
+                del self.user_dataframes[user_id]
+                del self.last_access[user_id]
 
 
 def load_data(file_bytes: BytesIO, filename: str):
@@ -86,19 +130,21 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
         file_bytes = BytesIO(contents)
         file_bytes.name = file.filename
         
-        df_manager.df = load_data(file_bytes, file.filename)
+        user_id = user["sub"]
+        user_df = load_data(file_bytes, file.filename)
 
-        if df_manager.df is None or df_manager.df.empty:
+        if user_df is None or user_df.empty:
             raise HTTPException(status_code=400, detail="Failed to process file: DataFrame is empty.")
         
-        user_id = user["sub"]
+        # Store the dataframe for this specific user (overwrites any existing data)
+        df_manager.set_df(user_id, user_df)
         print(f"✅ Processed file for user: {user_id}")
 
         return {
             "message": "File uploaded successfully.",
-            "columns": list(df_manager.df.columns),
-            "rows": len(df_manager.df),
-            "df": df_manager.df.head(10).to_dict(orient="records")
+            "columns": list(user_df.columns),
+            "rows": len(user_df),
+            "df": user_df.head(10).to_dict(orient="records")
         }
     except Exception as e:
         print(f"❌ ERROR: {e}")
@@ -107,54 +153,61 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
 
 @app.post("/demo")
 async def demo_session(user=Depends(verify_supabase_token)):
-    df_manager.df = pd.read_csv("supermarket_sales.csv")
+    user_id = user["sub"]
+    user_df = pd.read_csv("supermarket_sales.csv")
 
-    cat_columns = df_manager.df.select_dtypes(include=['category']).columns
+    cat_columns = user_df.select_dtypes(include=['category']).columns
     for col in cat_columns:
-        df_manager.df[col] = df_manager.df[col].cat.add_categories("NA")
+        user_df[col] = user_df[col].cat.add_categories("NA")
 
-    df_manager.df = df_manager.df.fillna("NA")
-    df_json = df_manager.df.head(10).to_dict(orient="records")
+    user_df = user_df.fillna("NA")
+    
+    # Store the demo dataframe for this specific user (overwrites any existing data)
+    df_manager.set_df(user_id, user_df)
+    
+    df_json = user_df.head(10).to_dict(orient="records")
 
     return {
-        "message": "File uploaded successfully.",
-        "columns": list(df_manager.df.columns),
-        "rows": len(df_manager.df),
+        "message": "Demo data loaded successfully.",
+        "columns": list(user_df.columns),
+        "rows": len(user_df),
         "df": df_json
     }
 
 
 @app.post("/query")
 async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)):
-    if df_manager.df is None:
-        raise HTTPException(status_code=400, detail="No DataFrame loaded. Please upload a file first.")
+    user_id = user["sub"]
+    user_df = df_manager.get_df(user_id)
+    
+    if user_df is None:
+        raise HTTPException(status_code=400, detail="No DataFrame loaded for this user. Please upload a file first.")
 
     if "query" not in data:
         raise HTTPException(status_code=400, detail="Missing query in request.")
 
     user_query = data["query"]
-    user_id = user["sub"]
     memory = get_user_memory(user_id)
 
-    optimised_query = expand_query_with_chain_of_thought(user_query, df_manager.df, memory)
+    optimised_query = expand_query_with_chain_of_thought(user_query, user_df, memory)
     print(f"🧠 Optimized Query: {optimised_query}")
     query_type = classify_query(optimised_query)
 
     try:
         if query_type == "plot":
-            fig = generate_plotly_chart(df_manager.df, memory, optimised_query)
+            fig = generate_plotly_chart(user_df, memory, optimised_query)
             memory.save_context({"input": optimised_query}, {"output": "Plot generated"})
             result = {"type": "plot", "content": fig.to_json()}
             
         elif query_type == "table":
             try:
-                result_df = generate_table(df_manager.df, memory, optimised_query)
+                result_df = generate_table(user_df, memory, optimised_query)
                 if not isinstance(result_df, pd.DataFrame):
                     raise ValueError("The code did not define a valid DataFrame named `result_df`.")
-                # ✅ Save summary to memory
+                # Save summary to memory
                 memory_output = result_df.head(2).to_string(index=False)
                 memory.save_context({"input": optimised_query}, {"output": memory_output})
-                # ✅ Send full table to frontend
+                # Send full table to frontend
                 result = {
                     "type": "table",
                     "content": result_df.to_dict(orient="records")
@@ -173,7 +226,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             When answering the user query, please explain your reasoning in detail.
             Always try to support your answer with numerical value, comparision and with proper reasoning.
             """
-            agent = create_pandas_dataframe_agent(df_manager.llm, df_manager.df, memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
+            agent = create_pandas_dataframe_agent(df_manager.llm, user_df, memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
             answer = agent.run(optimised_query)
             memory.save_context({"input": optimised_query}, {"output": answer})
             result = {"type": "text", "content": answer}
