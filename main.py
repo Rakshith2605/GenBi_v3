@@ -25,6 +25,7 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_openai import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
 from utils.memory_manager import get_user_memory
+from langchain.agents.agent_types import AgentType
 
 load_dotenv()
 
@@ -34,7 +35,7 @@ class DataFrameManager:
         self.user_dataframes = {}  # Dictionary to store dataframes for each user
         self.last_access = {}  # Track when each user last accessed their data
         self.max_idle_time = max_idle_time
-        self.llm = ChatOpenAI(temperature=0.9, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY)
+        self.llm = ChatOpenAI(temperature=0.9, model=OPENAI_MODEL, openai_api_key=OPENAI_API_KEY, max_tokens=4000)
         self._cleanup_lock = threading.Lock()
         self._setup_cleanup_thread()
     
@@ -222,7 +223,11 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
 
         else:
             detailed_prompt = """
-            You are an expert data analyst working with pandas DataFrames.
+            You are an expert data analyst working with pandas DataFrames.Be thorough in your analysis. 
+            Use **as many tokens as needed** to explain the reasoning, and do not shorten any explanations.
+            Use full sentences and **rich descriptions**, making sure every step and reasoning is completely described.
+            Don’t skip steps. If needed, break complex logic into parts and explain each one clearly.
+
 
             When answering user queries, follow these steps:
             1. UNDERSTAND: First, understand what the query is asking for and identify the key analysis requirements.
@@ -247,6 +252,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
             agent = create_pandas_dataframe_agent(
                 df_manager.llm,
                 user_df,
+                agent_type=AgentType.OPENAI_FUNCTIONS,
                 memory=memory,
                 verbose=True,
                 allow_dangerous_code=True,
