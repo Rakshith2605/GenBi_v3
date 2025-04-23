@@ -223,10 +223,36 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
         else:
             detailed_prompt = """
             You are an expert data analyst working with pandas DataFrames.
-            When answering the user query, please explain your reasoning in detail.
-            Always try to support your answer with numerical value, comparision and with proper reasoning.
+
+            When answering user queries, follow these steps:
+            1. UNDERSTAND: First, understand what the query is asking for and identify the key analysis requirements.
+            2. PLAN: Outline the step-by-step approach you'll take to solve the problem, including which pandas operations to use.
+            3. EXECUTE: For each step in your plan:
+            - Show the code you would execute
+            - Explain what this code does and why it's needed
+            - When appropriate, describe what the output would look like
+            4. ANALYZE: Interpret the results of your analysis, highlighting key patterns, insights, or anomalies.
+            5. CONCLUDE: Summarize your findings and directly answer the original query.
+
+            Always support your answers with:
+            - Numerical evidence (calculations, aggregations, statistics)
+            - Comparative analysis (before/after, between groups, against benchmarks)
+            - Clear reasoning about why your approach is appropriate
+            - Explain in points with Statistics supporting the respective point. 
+
+            Your explanations should be detailed enough that someone could follow your logic and reproduce your analysis.
+            If there are multiple ways to approach the problem, explain which approach you chose and why.
             """
-            agent = create_pandas_dataframe_agent(df_manager.llm, user_df, memory=memory, verbose=True, allow_dangerous_code=True, prompt=detailed_prompt)
+
+            agent = create_pandas_dataframe_agent(
+                df_manager.llm,
+                user_df,
+                memory=memory,
+                verbose=True,
+                allow_dangerous_code=True,
+                prompt=detailed_prompt
+            )
+
             answer = agent.run(optimised_query)
             memory.save_context({"input": optimised_query}, {"output": answer})
             result = {"type": "text", "content": answer}
