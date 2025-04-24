@@ -12,7 +12,7 @@ def classify_query(query: str) -> str:
 
                     - 'plot': If the user is asking for any kind of visualization, chart, or graph (even if the plot type is not explicitly stated).
                     - 'table': If the user is requesting data output, filtering, sorting, summarization, or any structured view of the DataFrame in tabular form.
-                    - 'answer': If the user is asking a statistical, analytical, or descriptive question that requires a textual or numerical answer, but not a plot or full table.
+                    - 'answer': If the user is asking a statistical, analytical,explaination or descriptive question that requires a textual or numerical answer, but not a plot or full table.
                     
 
                     Guidelines:
@@ -27,6 +27,7 @@ def classify_query(query: str) -> str:
                     - "Show me a bar chart of sales over time" -> plot
                     - "List the top 5 customers by revenue" -> table
                     - "What is the average revenue per customer?" -> answer
+                    - "Could you provide an in-depth analysis of the bar chart that illustrates the average rating for each unique product line, displayed in distinct colors, and identify the main factors that are influencing the chart?"-> answer
                     - "Generate a visualization" -> plot
                     - "Give me a summary table" -> table
                     - "Which product is the most popular?" -> answer
