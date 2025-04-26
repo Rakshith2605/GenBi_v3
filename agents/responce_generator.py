@@ -133,7 +133,6 @@ def explain_plot(user_df,memory,optimised_query):
     agent = create_pandas_dataframe_agent(
                 llm,
                 user_df,
-                agent_type=AgentType.OPENAI_FUNCTIONS,
                 memory=memory,
                 verbose=True,
                 allow_dangerous_code=True,
