@@ -222,7 +222,20 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
                     "type": "table",
                     "content": pd.DataFrame({"Error": [str(e)]}).to_dict(orient="records")
                 }
-
+        
+        elif query_type == 'explaination':
+            try:
+                explaination = explain_plot(user_df,memory,optimised_query)
+                memory.save_context({"input": optimised_query}, {"output": explaination})
+                result = {"type": "text", "content": explaination}  
+            except Exception as e:
+                print("❌ Error executing agent code:\n", traceback.format_exc())
+                result = {
+                    "type": "explaination",
+                    "content": pd.DataFrame({"Error": [str(e)]}).to_dict(orient="records")
+                }             
+                
+        
         else:
 
             answer = answer_query(user_df,memory,optimised_query)
