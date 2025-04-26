@@ -5,6 +5,7 @@ from langchain_openai import ChatOpenAI
 import os
 from pathlib import Path
 from langchain_experimental.agents import create_pandas_dataframe_agent
+from langchain.agents.agent_types import AgentType
 
 
 
@@ -27,3 +28,52 @@ def generate_responce(df, query):
         answer = agent.run(query)
         
         return answer
+
+
+def answer_query(user_df,memory,optimised_query):
+    detailed_prompt = """
+            You are an expert data analyst working with pandas DataFrames.Be thorough in your analysis. 
+            Use **as many tokens as needed** to explain the reasoning, and do not shorten any explanations.
+            Use full sentences and **rich descriptions**, making sure every step and reasoning is completely described.
+            Don’t skip steps. If needed, break complex logic into parts and explain each one clearly.
+
+
+            When answering user queries, follow these steps:
+            1. UNDERSTAND: First, understand what the query is asking for and identify the key analysis requirements.
+            2. PLAN: Outline the step-by-step approach you'll take to solve the problem, including which pandas operations to use.
+            3. EXECUTE: For each step in your plan:
+            - Show the code you would execute
+            - Explain what this code does and why it's needed
+            - When appropriate, describe what the output would look like
+            4. ANALYZE: Interpret the results of your analysis, highlighting key patterns, insights, or anomalies.
+            5. CONCLUDE: Summarize your findings and directly answer the original query.
+            
+    [Important]When explaining a plot, follow these three structured steps to ensure clarity and depth:
+                1. Data Manipulation: Preprocess or transform data as needed to highlight key patterns or trends relevant to the plot.
+                2. Statistical Extraction: Compute and present core statistics (e.g., mean, median, variance, correlation coefficients) to quantify insights.
+                3. Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
+                4. Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
+                
+            Always support your answers with:
+            - Numerical evidence (calculations, aggregations, statistics)
+            - Comparative analysis (before/after, between groups, against benchmarks)
+            - Clear reasoning about why your approach is appropriate
+            - Explain in points with Statistics supporting the respective point. 
+
+            Your explanations should be detailed enough that someone could follow your logic and reproduce your analysis.
+            If there are multiple ways to approach the problem, explain which approach you chose and why.
+            """
+
+    agent = create_pandas_dataframe_agent(
+                llm,
+                user_df,
+                agent_type=AgentType.OPENAI_FUNCTIONS,
+                memory=memory,
+                verbose=True,
+                allow_dangerous_code=True,
+                prompt=detailed_prompt
+            )
+
+    answer = agent.run(optimised_query)
+    
+    return answer
