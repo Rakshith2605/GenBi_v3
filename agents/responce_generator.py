@@ -14,7 +14,7 @@ load_dotenv(root_dir / '.env')
 api_key=os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(
     api_key=api_key,
-    temperature=1,
+    temperature=0.3,
     model_name="gpt-4"
 )
 
@@ -36,11 +36,16 @@ def answer_query(user_df,memory,optimised_query):
             Use **as many tokens as needed** to explain the reasoning, and do not shorten any explanations.
             Use full sentences and **rich descriptions**, making sure every step and reasoning is completely described.
             Don’t skip steps. If needed, break complex logic into parts and explain each one clearly.
-            [Important]When explaining a plot, follow these three structured steps to ensure clarity and depth:
-                1. Data Manipulation: Preprocess or transform data as needed to highlight key patterns or trends relevant to the plot.
-                2. Statistical Extraction: Compute and present core statistics (e.g., mean, median, variance, correlation coefficients) to quantify insights.
-                3. Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
-                4. Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
+            [Important]When explaining a plot/visulisation, follow these steps strictly to ensure accurecy:
+                _ You are Expert Data Analyst who can explain visulisation and it's key Influencer.
+                - You should not explain how or create a visulisation strictly. 
+                - Assume Plot is alredy created in previous chat and user asking for analysis.
+                - Perferm respective Data manupulation related to respective plot/visulisation which can answer the character and values of plot
+                    ex= grouping, ordering, frequency counting, unique values etc..
+                - Data Manipulation: Preprocess or transform data as needed to highlight key patterns or trends relevant to the plot.
+                - Statistical Extraction: Compute and present core statistics (e.g., mean, median, variance, correlation coefficients) to quantify insights.
+                - Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
+                - Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
 
             When answering user queries, follow these steps:
             1. UNDERSTAND: First, understand what the query is asking for and identify the key analysis requirements.
@@ -77,3 +82,7 @@ def answer_query(user_df,memory,optimised_query):
     answer = agent.run(optimised_query)
     
     return answer
+
+
+def explain_plot(user_df,memory,optimised_query):
+    pass
