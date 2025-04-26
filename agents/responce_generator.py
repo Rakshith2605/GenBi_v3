@@ -99,6 +99,24 @@ def explain_plot(user_df,memory,optimised_query):
                 - Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
                 - Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
                 
+                
+                Your Answer should follow below schema
+                'The Above plot describes the discribes the frequency of elements in Elements column,
+                Element-1 has 50 entries,
+                Element-2 has 60 entries,
+                Element-3 has 30 entries,.....
+                
+                Key influencers and Analysis
+                Element-2 has highest rating hence it has higher distribution 
+                ...
+                
+                
+                Summery: <Summery>
+        
+                '
+            Before Answering the question run python code on df(Actual data frame) assuming it's alredy decleared.
+            
+             
             Start Answer with the Above plot shows.....
             Your explanations should be detailed enough that someone could follow your logic and reproduce your analysis.
             If there are multiple ways to approach the problem, explain which approach you chose and why.
