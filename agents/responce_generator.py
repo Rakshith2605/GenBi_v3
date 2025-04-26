@@ -36,7 +36,11 @@ def answer_query(user_df,memory,optimised_query):
             Use **as many tokens as needed** to explain the reasoning, and do not shorten any explanations.
             Use full sentences and **rich descriptions**, making sure every step and reasoning is completely described.
             Don’t skip steps. If needed, break complex logic into parts and explain each one clearly.
-
+            [Important]When explaining a plot, follow these three structured steps to ensure clarity and depth:
+                1. Data Manipulation: Preprocess or transform data as needed to highlight key patterns or trends relevant to the plot.
+                2. Statistical Extraction: Compute and present core statistics (e.g., mean, median, variance, correlation coefficients) to quantify insights.
+                3. Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
+                4. Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
 
             When answering user queries, follow these steps:
             1. UNDERSTAND: First, understand what the query is asking for and identify the key analysis requirements.
@@ -48,11 +52,7 @@ def answer_query(user_df,memory,optimised_query):
             4. ANALYZE: Interpret the results of your analysis, highlighting key patterns, insights, or anomalies.
             5. CONCLUDE: Summarize your findings and directly answer the original query.
             
-    [Important]When explaining a plot, follow these three structured steps to ensure clarity and depth:
-                1. Data Manipulation: Preprocess or transform data as needed to highlight key patterns or trends relevant to the plot.
-                2. Statistical Extraction: Compute and present core statistics (e.g., mean, median, variance, correlation coefficients) to quantify insights.
-                3. Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
-                4. Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
+
                 
             Always support your answers with:
             - Numerical evidence (calculations, aggregations, statistics)
