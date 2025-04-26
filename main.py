@@ -19,7 +19,7 @@ from agents.classifier import classify_query
 from agents.prompt_generator import generate_data_manipulation_prompt
 from agents.visualization import create_visualization, generate_plotly_chart
 from agents.query_optimiser import expand_query_with_chain_of_thought
-from agents.responce_generator import answer_query
+from agents.responce_generator import answer_query, explain_plot
 from utils.data_processor import process_dataframe
 from agents.table_generator import get_df, generate_table
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -194,6 +194,7 @@ async def process_query_endpoint(data: dict, user=Depends(verify_supabase_token)
     optimised_query = expand_query_with_chain_of_thought(user_query, user_df, memory)
     print(f"🧠 Optimized Query: {optimised_query}")
     query_type = classify_query(optimised_query)
+    print("query_type: ",query_type)
 
     try:
         if query_type == "plot":

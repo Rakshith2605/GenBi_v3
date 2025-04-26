@@ -36,7 +36,8 @@ def answer_query(user_df,memory,optimised_query):
             Use **as many tokens as needed** to explain the reasoning, and do not shorten any explanations.
             Use full sentences and **rich descriptions**, making sure every step and reasoning is completely described.
             Don’t skip steps. If needed, break complex logic into parts and explain each one clearly.
-            [Important]When explaining a plot/visulisation, follow these steps strictly to ensure accurecy:
+            
+            When explaining a plot/visulisation, follow these steps strictly to ensure accurecy:
                 _ You are Expert Data Analyst who can explain visulisation and it's key Influencer.
                 - You should not explain how or create a visulisation strictly. 
                 - Assume Plot is alredy created in previous chat and user asking for analysis.
@@ -94,8 +95,13 @@ def explain_plot(user_df,memory,optimised_query):
                     ex= grouping, ordering, frequency counting, unique values etc..
                 - Data Manipulation: Preprocess or transform data as needed to highlight key patterns or trends relevant to the plot.
                 - Statistical Extraction: Compute and present core statistics (e.g., mean, median, variance, correlation coefficients) to quantify insights.
+                - Primerly Explain all numerical values represented in the visulisation                 
                 - Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
                 - Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
+                
+            Start Answer with the Above plot shows.....
+            Your explanations should be detailed enough that someone could follow your logic and reproduce your analysis.
+            If there are multiple ways to approach the problem, explain which approach you chose and why.
     
     """
     agent = create_pandas_dataframe_agent(
