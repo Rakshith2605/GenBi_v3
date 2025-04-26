@@ -14,8 +14,8 @@ load_dotenv(root_dir / '.env')
 api_key=os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(
     api_key=api_key,
-    temperature=0.3,
-    model_name="gpt-4"
+    temperature=0.9,
+    model_name="gpt-4.1"
 )
 
 def generate_responce(df, query):
@@ -85,4 +85,29 @@ def answer_query(user_df,memory,optimised_query):
 
 
 def explain_plot(user_df,memory,optimised_query):
-    pass
+    detailed_prompt = """
+                [Important]When explaining a plot/visulisation, follow these steps strictly to ensure accurecy:
+                _ You are Expert Data Analyst who can explain visulisation and it's key Influencer.
+                - You should not explain how or create a visulisation strictly. 
+                - Assume Plot is alredy created in previous chat and user asking for analysis.
+                - Perferm respective Data manupulation related to respective plot/visulisation which can answer the character and values of plot
+                    ex= grouping, ordering, frequency counting, unique values etc..
+                - Data Manipulation: Preprocess or transform data as needed to highlight key patterns or trends relevant to the plot.
+                - Statistical Extraction: Compute and present core statistics (e.g., mean, median, variance, correlation coefficients) to quantify insights.
+                - Insightful Explanation: Use the extracted statistics to explain what the plot reveals, why it matters, and how it relates to the broader context or objective.
+                - Be concise, context-aware, and avoid redundant narration of what the plot visibly shows.
+    
+    """
+    agent = create_pandas_dataframe_agent(
+                llm,
+                user_df,
+                agent_type=AgentType.OPENAI_FUNCTIONS,
+                memory=memory,
+                verbose=True,
+                allow_dangerous_code=True,
+                prompt=detailed_prompt
+            )
+
+    answer = agent.run(optimised_query)
+    
+    return answer
