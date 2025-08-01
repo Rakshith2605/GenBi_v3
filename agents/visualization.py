@@ -177,7 +177,8 @@ def generate_plotly_chart(df,memory, optimised_query):
     f"{optimised_query.strip()}\n"
     "Use only Plotly Express (px) or Plotly Graph Objects (go) to create the chart.\n"
     "Assume `df` is already available. Do not redefine it.\n"
-    "Return only valid Python code that defines a figure named `fig` and displays it using `.show()`.\n"
+    "Return only valid Python code that defines a figure named `fig`.\n"
+    "Do NOT use .show() method - just create the figure object.\n"
     "Do not include comments, markdown, or explanation.\n\n"
     "Follow these aesthetic visualization guidelines:\n\n"
     "1. Use a professional color palette with 4-7 complementary colors\n"
@@ -206,6 +207,9 @@ def generate_plotly_chart(df,memory, optimised_query):
      if "```" in generated_code:
          generated_code = generated_code.replace("```python", "").replace("```", "").strip()
  
+     # ✅ Remove any .show() calls that might still be generated
+     generated_code = generated_code.replace(".show()", "")
+     
      print("🧪 Cleaned Code to Execute:\n", generated_code)
  
      # ✅ Execute safely
