@@ -301,18 +301,28 @@ def get_file_info(df: pd.DataFrame) -> Dict[str, Any]:
         df: DataFrame to analyze
         
     Returns:
-        Dictionary with file information
+        Dictionary with file information (JSON-serializable)
     """
+    # Convert numpy dtypes to strings for JSON serialization
+    data_types = {}
+    for col, dtype in df.dtypes.items():
+        data_types[str(col)] = str(dtype)
+    
+    # Convert missing values to regular Python types
+    missing_values = {}
+    for col, count in df.isnull().sum().items():
+        missing_values[str(col)] = int(count)
+    
     info = {
-        "rows": len(df),
-        "columns": len(df.columns),
-        "column_names": list(df.columns),
-        "data_types": df.dtypes.to_dict(),
-        "memory_usage": df.memory_usage(deep=True).sum(),
-        "missing_values": df.isnull().sum().to_dict(),
-        "numeric_columns": df.select_dtypes(include=[np.number]).columns.tolist(),
-        "categorical_columns": df.select_dtypes(include=['object', 'category']).columns.tolist(),
-        "date_columns": df.select_dtypes(include=['datetime64']).columns.tolist()
+        "rows": int(len(df)),
+        "columns": int(len(df.columns)),
+        "column_names": [str(col) for col in df.columns],
+        "data_types": data_types,
+        "memory_usage": int(df.memory_usage(deep=True).sum()),
+        "missing_values": missing_values,
+        "numeric_columns": [str(col) for col in df.select_dtypes(include=[np.number]).columns],
+        "categorical_columns": [str(col) for col in df.select_dtypes(include=['object', 'category']).columns],
+        "date_columns": [str(col) for col in df.select_dtypes(include=['datetime64']).columns]
     }
     
     return info 

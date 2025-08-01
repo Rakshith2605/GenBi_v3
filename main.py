@@ -78,12 +78,17 @@ from utils.file_processor import load_data, get_file_info, FileProcessingError
 
 
 def convert_numpy_types(obj):
+    """Convert numpy types to JSON-serializable types"""
     if isinstance(obj, np.generic):
         return obj.item()
     elif isinstance(obj, dict):
-        return {key: convert_numpy_types(value) for key, value in obj.items()}
+        return {str(key): convert_numpy_types(value) for key, value in obj.items()}
     elif isinstance(obj, list):
         return [convert_numpy_types(element) for element in obj]
+    elif hasattr(obj, 'dtype'):  # Handle numpy arrays and pandas objects
+        return str(obj)
+    elif hasattr(obj, '__dict__'):  # Handle objects with __dict__
+        return str(obj)
     return obj
 
 
@@ -124,13 +129,16 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
         df_manager.set_df(user_id, user_df)
         print(f"✅ Processed file for user: {user_id}")
 
-        return {
+        # Ensure all data is JSON-serializable
+        response_data = {
             "message": "File uploaded successfully.",
-            "columns": list(user_df.columns),
-            "rows": len(user_df),
+            "columns": [str(col) for col in user_df.columns],
+            "rows": int(len(user_df)),
             "df": user_df.head(10).to_dict(orient="records"),
             "file_info": file_info
         }
+        
+        return jsonable_encoder(convert_numpy_types(response_data))
     except FileProcessingError as e:
         print(f"❌ File processing error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -158,13 +166,16 @@ async def demo_session(user=Depends(verify_supabase_token)):
         
         df_json = user_df.head(10).to_dict(orient="records")
 
-        return {
+        # Ensure all data is JSON-serializable
+        response_data = {
             "message": "Demo data loaded successfully.",
-            "columns": list(user_df.columns),
-            "rows": len(user_df),
+            "columns": [str(col) for col in user_df.columns],
+            "rows": int(len(user_df)),
             "df": df_json,
             "file_info": file_info
         }
+        
+        return jsonable_encoder(convert_numpy_types(response_data))
     except FileProcessingError as e:
         print(f"❌ Demo data processing error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
