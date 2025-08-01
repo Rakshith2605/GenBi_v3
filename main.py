@@ -74,19 +74,7 @@ class DataFrameManager:
                 del self.last_access[user_id]
 
 
-def load_data(file_bytes: BytesIO, filename: str):
-    try:
-        if filename.endswith('.csv'):
-            return pd.read_csv(file_bytes, sep=None, engine='python')
-        elif filename.endswith(('.xls', '.xlsx')):
-            return pd.read_excel(file_bytes)
-        elif filename.endswith('.json'):
-            return pd.read_json(file_bytes)
-        else:
-            raise ValueError("Unsupported file format.")
-    except Exception as e:
-        print(f"❌ Error loading file: {e}")  # Debugging line
-        raise ValueError(f"Error loading file: {e}")
+from utils.file_processor import load_data, get_file_info, FileProcessingError
 
 
 def convert_numpy_types(obj):
@@ -123,14 +111,14 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
     try:
         print(f"🔍 Received file: {file.filename}")
         contents = await file.read()
-        file_bytes = BytesIO(contents)
-        file_bytes.name = file.filename
         
         user_id = user["sub"]
-        user_df = load_data(file_bytes, file.filename)
-
-        if user_df is None or user_df.empty:
-            raise HTTPException(status_code=400, detail="Failed to process file: DataFrame is empty.")
+        
+        # Use the enhanced file processing
+        user_df = load_data(contents, file.filename)
+        
+        # Get comprehensive file information
+        file_info = get_file_info(user_df)
         
         # Store the dataframe for this specific user (overwrites any existing data)
         df_manager.set_df(user_id, user_df)
@@ -140,35 +128,49 @@ async def upload_file(file: UploadFile = File(...), user=Depends(verify_supabase
             "message": "File uploaded successfully.",
             "columns": list(user_df.columns),
             "rows": len(user_df),
-            "df": user_df.head(10).to_dict(orient="records")
+            "df": user_df.head(10).to_dict(orient="records"),
+            "file_info": file_info
         }
+    except FileProcessingError as e:
+        print(f"❌ File processing error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"❌ ERROR: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"❌ Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @app.post("/demo")
 async def demo_session(user=Depends(verify_supabase_token)):
     user_id = user["sub"]
-    user_df = pd.read_csv("supermarket_sales.csv")
-
-    cat_columns = user_df.select_dtypes(include=['category']).columns
-    for col in cat_columns:
-        user_df[col] = user_df[col].cat.add_categories("NA")
-
-    user_df = user_df.fillna("NA")
     
-    # Store the demo dataframe for this specific user (overwrites any existing data)
-    df_manager.set_df(user_id, user_df)
-    
-    df_json = user_df.head(10).to_dict(orient="records")
+    try:
+        # Use the enhanced file processing for demo data
+        with open("supermarket_sales.csv", 'rb') as f:
+            file_bytes = f.read()
+        
+        user_df = load_data(file_bytes, "supermarket_sales.csv")
+        
+        # Get comprehensive file information
+        file_info = get_file_info(user_df)
+        
+        # Store the demo dataframe for this specific user (overwrites any existing data)
+        df_manager.set_df(user_id, user_df)
+        
+        df_json = user_df.head(10).to_dict(orient="records")
 
-    return {
-        "message": "Demo data loaded successfully.",
-        "columns": list(user_df.columns),
-        "rows": len(user_df),
-        "df": df_json
-    }
+        return {
+            "message": "Demo data loaded successfully.",
+            "columns": list(user_df.columns),
+            "rows": len(user_df),
+            "df": df_json,
+            "file_info": file_info
+        }
+    except FileProcessingError as e:
+        print(f"❌ Demo data processing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        print(f"❌ Unexpected error loading demo data: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @app.post("/query")
