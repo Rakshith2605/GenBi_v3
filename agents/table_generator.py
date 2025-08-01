@@ -1,5 +1,3 @@
-from pandasai import SmartDataframe
-from pandasai.llm import OpenAI
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 import os
@@ -16,11 +14,6 @@ llm = ChatOpenAI(
     temperature=0,
     model_name="gpt-4"
 )
-
-def get_df(df, query):
-    sdf = SmartDataframe(df, config={"llm": llm})
-    k=sdf.chat(query)
-    return k
 
 def generate_table(df,memory,optimised_query):
     agent = create_pandas_dataframe_agent(

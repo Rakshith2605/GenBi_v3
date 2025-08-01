@@ -10,23 +10,17 @@ import time
 import threading
 from io import BytesIO
 from dotenv import load_dotenv
-import seaborn as sns
 import json
-import plotly.express as px
-import traceback
 from auth import verify_supabase_token
 from agents.classifier import classify_query
-from agents.prompt_generator import generate_data_manipulation_prompt
-from agents.visualization import create_visualization, generate_plotly_chart
+from agents.visualization import generate_plotly_chart
 from agents.query_optimiser import expand_query_with_chain_of_thought
 from agents.responce_generator import answer_query, explain_plot
-from utils.data_processor import process_dataframe
-from agents.table_generator import get_df, generate_table
+from agents.table_generator import generate_table
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_openai import ChatOpenAI
 from config import OPENAI_API_KEY, OPENAI_MODEL
 from utils.memory_manager import get_user_memory
-from langchain.agents.agent_types import AgentType
 
 load_dotenv()
 
