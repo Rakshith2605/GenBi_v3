@@ -178,8 +178,11 @@ def generate_plotly_chart(df,memory, optimised_query):
     "Use only Plotly Express (px) or Plotly Graph Objects (go) to create the chart.\n"
     "Assume `df` is already available. Do not redefine it.\n"
     "Return only valid Python code that defines a figure named `fig`.\n"
-    "Do NOT use .show() method - just create the figure object.\n"
-    "Do not include comments, markdown, or explanation.\n\n"
+    "IMPORTANT: Do NOT use .show() method - just create the figure object.\n"
+    "Do not include comments, markdown, or explanation.\n"
+    "Do not use print() statements.\n\n"
+    "Example format:\n"
+    "fig = px.histogram(df, x='column_name')\n\n"
     "Follow these aesthetic visualization guidelines:\n\n"
     "1. Use a professional color palette with 4-7 complementary colors\n"
     "2. Include clear titles, subtitles, and legends\n"
@@ -209,6 +212,11 @@ def generate_plotly_chart(df,memory, optimised_query):
  
      # ✅ Remove any .show() calls that might still be generated
      generated_code = generated_code.replace(".show()", "")
+     generated_code = generated_code.replace("fig.show()", "")
+     generated_code = generated_code.replace("plt.show()", "")
+     
+     # ✅ Remove any print statements that might interfere
+     generated_code = generated_code.replace("print(", "# print(")
      
      print("🧪 Cleaned Code to Execute:\n", generated_code)
  
@@ -217,8 +225,17 @@ def generate_plotly_chart(df,memory, optimised_query):
      import plotly.graph_objects as go
  
      exec_env = {'df': df, 'px': px, 'go': go}
-     exec(generated_code, {}, exec_env)
+     
+     try:
+         exec(generated_code, {}, exec_env)
+     except Exception as e:
+         print(f"❌ Error executing generated code: {e}")
+         print(f"Generated code was: {generated_code}")
+         raise Exception(f"Failed to execute generated code: {str(e)}")
  
      # ✅ Return the figure object
      fig = exec_env.get("fig")
+     if fig is None:
+         raise Exception("Generated code did not create a 'fig' variable")
+     
      return fig
